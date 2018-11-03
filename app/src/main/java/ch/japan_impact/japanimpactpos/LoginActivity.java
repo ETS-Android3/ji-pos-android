@@ -3,6 +3,7 @@ package ch.japan_impact.japanimpactpos;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
+import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
@@ -110,6 +111,10 @@ public class LoginActivity extends AppCompatActivity {
                     if (pair.first) {
                         // We change activity!
                         Toast.makeText(this, "success!", Toast.LENGTH_LONG).show();
+
+                        Intent openIntent = new Intent(this, ConfigurationPickerActivity.class);
+                        startActivity(openIntent);
+
                         finish();
                     } else {
                         Toast.makeText(this, "Erreur de connexion : " + pair.second, Toast.LENGTH_LONG).show();

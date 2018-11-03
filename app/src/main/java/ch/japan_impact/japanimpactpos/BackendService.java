@@ -8,6 +8,7 @@ import com.android.volley.AuthFailureError;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
+import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 import com.squareup.moshi.JsonAdapter;
@@ -18,6 +19,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -51,8 +53,8 @@ public class BackendService {
         return request;
     }
 
-    public JsonObjectRequest getConfigs(Consumer<Either<List<PosConfiguration>, String>> listOrError) {
-        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, API_URL + "/pos/configurations", null, resp -> {
+    public JsonArrayRequest getConfigs(Consumer<Either<List<PosConfiguration>, String>> listOrError) {
+        JsonArrayRequest request = new JsonArrayRequest(Request.Method.GET, API_URL + "/pos/configurations", null, resp -> {
             Type type = Types.newParameterizedType(List.class, PosConfiguration.class);
             JsonAdapter<List<PosConfiguration>> adapter = moshi.adapter(type);
             try {
@@ -65,7 +67,7 @@ public class BackendService {
         }, error -> listOrError.accept(Either.ofSecond(error.getMessage()))) {
             @Override
             public Map<String, String> getHeaders() throws AuthFailureError {
-                Map<String, String> headers = super.getHeaders();
+                Map<String, String> headers = new HashMap<>(super.getHeaders());
                 if (!PosSession.getInstance(ctx).isLoggedIn()) {
                     throw new AuthFailureError("Vous devez être connecté pour faire cela.");
                 }

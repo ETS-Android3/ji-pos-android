@@ -4,12 +4,12 @@ package ch.japan_impact.japanimpactpos.utils;
  * @author Louis Vialar
  */
 public class Either<T, U> {
-    private final T t;
-    private final U u;
+    public final T first;
+    public final U second;
 
     private Either(T t, U u) {
-        this.t = t;
-        this.u = u;
+        this.first = t;
+        this.second = u;
     }
 
     public static <T, U> Either<T, U> ofFirst(T t) {
@@ -20,11 +20,7 @@ public class Either<T, U> {
         return new Either<>(null, u);
     }
 
-    public T getFirst() {
-        return t;
-    }
-
-    public U getSecond() {
-        return u;
+    public boolean isFirst() {
+        return first != null;
     }
 }
