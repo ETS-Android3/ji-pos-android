@@ -4,10 +4,8 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
 import android.content.Intent;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.View;
@@ -17,13 +15,12 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
-import com.android.volley.Request;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.JsonObjectRequest;
+import androidx.appcompat.app.AppCompatActivity;
+import ch.japan_impact.japanimpactpos.network.BackendService;
+import dagger.android.AndroidInjection;
 import org.json.JSONException;
-import org.json.JSONObject;
 
+import javax.inject.Inject;
 import java.util.function.Function;
 
 /**
@@ -36,35 +33,41 @@ public class LoginActivity extends AppCompatActivity {
     private View mProgressView;
     private View mLoginFormView;
 
+    @Inject
+    BackendService service;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        AndroidInjection.inject(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+
         // Set up the login form.
-        mEmailView = (EditText) findViewById(R.id.email);
+        mEmailView = findViewById(R.id.email);
 
-        mPasswordView = (EditText) findViewById(R.id.password);
-        mPasswordView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
-                if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
-                    attemptLogin();
-                    return true;
-                }
-                return false;
-            }
-        });
-
-        Button mEmailSignInButton = (Button) findViewById(R.id.email_sign_in_button);
-        mEmailSignInButton.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View view) {
+        mPasswordView = findViewById(R.id.password);
+        mPasswordView.setOnEditorActionListener((textView, id, keyEvent) -> {
+            if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
                 attemptLogin();
+                return true;
             }
+            return false;
         });
+
+        Button mEmailSignInButton = findViewById(R.id.email_sign_in_button);
+        mEmailSignInButton.setOnClickListener(view -> attemptLogin());
 
         mLoginFormView = findViewById(R.id.login_form);
         mProgressView = findViewById(R.id.login_progress);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (service.getStorage().isLoggedIn()) {
+            startActivity(new Intent(this, ConfigurationPickerActivity.class));
+            finish();
+        }
     }
 
     private boolean checkFieldInvalid(EditText textView, Function<String, Boolean> isValid) {
@@ -107,18 +110,17 @@ public class LoginActivity extends AppCompatActivity {
             showProgress(true);
 
             try {
-                PosSession.getInstance(this).login(email, password, pair -> {
-                    if (pair.first) {
-                        // We change activity!
-                        Toast.makeText(this, "success!", Toast.LENGTH_LONG).show();
+                service.login(email, password, errors -> {
+                    if (errors.isPresent()) {
+                        Toast.makeText(this, "Erreur de connexion : " + errors.get(), Toast.LENGTH_LONG).show();
+                        showProgress(false);
+                    } else {
+                        Toast.makeText(this, "Login success!", Toast.LENGTH_LONG).show();
 
                         Intent openIntent = new Intent(this, ConfigurationPickerActivity.class);
                         startActivity(openIntent);
 
                         finish();
-                    } else {
-                        Toast.makeText(this, "Erreur de connexion : " + pair.second, Toast.LENGTH_LONG).show();
-                        showProgress(false);
                     }
                 });
             } catch (JSONException e) {
