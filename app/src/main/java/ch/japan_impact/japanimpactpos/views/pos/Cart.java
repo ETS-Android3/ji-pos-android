@@ -14,12 +14,14 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.recyclerview.widget.RecyclerView;
 import ch.japan_impact.japanimpactpos.R;
-import ch.japan_impact.japanimpactpos.data.JIItem;
+import ch.japan_impact.japanimpactpos.data.pos.CheckedOutItem;
+import ch.japan_impact.japanimpactpos.data.pos.JIItem;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * @author Louis Vialar
@@ -52,6 +54,13 @@ public class Cart {
 
     public List<CartedItem> getContent() {
         return Collections.unmodifiableList(content);
+    }
+
+    public List<CheckedOutItem> getOrder() {
+        return content.stream()
+                .map(CartedItem::toCheckedOutItem)
+                .filter(item -> item.getItemAmount() > 0)
+                .collect(Collectors.toList());
     }
 
     public void addItem(JIItem item) {
@@ -91,41 +100,29 @@ public class Cart {
         }
     }
 
-    public static class CartedItem {
-        private JIItem item;
-        private MutableLiveData<Integer> quantity;
+    class CartedItem {
+        final JIItem item;
+        int quantity;
+        final MutableLiveData<Integer> watchableQuantity = new MutableLiveData<>();
 
-        public CartedItem(JIItem item, int quantity) {
+        CartedItem(JIItem item, int quantity) {
             this.item = item;
-            this.quantity = new MutableLiveData<>();
-            this.quantity.postValue(quantity);
+            this.quantity = quantity;
+            this.watchableQuantity.postValue(quantity);
         }
 
-        public JIItem getItem() {
-            return item;
+        void add(int howMany) {
+            this.quantity += howMany;
+            this.watchableQuantity.postValue(this.quantity);
         }
 
-        public void setItem(JIItem item) {
-            this.item = item;
+        boolean remove(int howMany) {
+            add(-howMany);
+            return quantity <= 0;
         }
 
-        public LiveData<Integer> getQuantity() {
-            return quantity;
-        }
-
-        public void add(int howMany) {
-            this.setQuantity(this.quantity.getValue() + 1);
-        }
-
-        public boolean remove(int howMany) {
-            int q = this.quantity.getValue() - howMany;
-            this.setQuantity(q);
-
-            return q <= 0;
-        }
-
-        public void setQuantity(int quantity) {
-            this.quantity.postValue(quantity);
+        CheckedOutItem toCheckedOutItem() {
+            return new CheckedOutItem(item.getId(), quantity, item.getPrice());
         }
     }
 
@@ -185,7 +182,7 @@ public class Cart {
             if (item != null) {
                 this.itemView.setBackgroundResource(R.drawable.itemborder);
                 itemName.setText(item.item.getName());
-                item.quantity.observe(activity, integer -> {
+                item.watchableQuantity.observe(activity, integer -> {
                     itemQuantity.setText("x" + integer);
                     itemPrice.setText("Soit " + item.item.getPrice() * integer + " .-");
                 });

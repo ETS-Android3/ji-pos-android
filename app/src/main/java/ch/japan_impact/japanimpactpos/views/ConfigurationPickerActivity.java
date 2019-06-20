@@ -16,11 +16,12 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import ch.japan_impact.japanimpactpos.R;
-import ch.japan_impact.japanimpactpos.data.PosConfiguration;
-import ch.japan_impact.japanimpactpos.data.PosConfigurationList;
+import ch.japan_impact.japanimpactpos.data.pos.PosConfiguration;
+import ch.japan_impact.japanimpactpos.data.pos.PosConfigurationList;
 import ch.japan_impact.japanimpactpos.network.BackendService;
+import ch.japan_impact.japanimpactpos.network.exceptions.LoginRequiredException;
+import ch.japan_impact.japanimpactpos.network.exceptions.NetworkException;
 import ch.japan_impact.japanimpactpos.views.pos.POSActivity;
-import com.android.volley.AuthFailureError;
 import dagger.android.AndroidInjection;
 
 import javax.inject.Inject;
@@ -67,38 +68,38 @@ public class ConfigurationPickerActivity extends AppCompatActivity {
     private void refresh() {
         this.mRefreshLayout.setRefreshing(true);
 
-        try {
-            backend.getConfigs(new BackendService.ApiCallback<List<PosConfigurationList>>() {
-                @Override
-                public void onSuccess(List<PosConfigurationList> data) {
-                    Log.i(TAG, "Result from backend " + data.toString());
-                    adapter.setConfigurations(
-                            data.stream()
-                                    .flatMap(configList -> configList.getConfigs()
-                                            .stream()
-                                            .map(config -> new PosConfiguration(config.getId(), config.getEventId(), configList.getEvent().getName() + " - " + config.getName(), config.isAcceptCards())))
-                                    .collect(Collectors.toList())
-                    );
+
+        backend.getConfigs(new BackendService.ApiCallback<List<PosConfigurationList>>() {
+            @Override
+            public void onSuccess(List<PosConfigurationList> data) {
+                Log.i(TAG, "Result from backend " + data.toString());
+                adapter.setConfigurations(
+                        data.stream()
+                                .flatMap(configList -> configList.getConfigs()
+                                        .stream()
+                                        .map(config -> new PosConfiguration(config.getId(), config.getEventId(), configList.getEvent().getName() + " - " + config.getName(), config.isAcceptCards())))
+                                .collect(Collectors.toList())
+                );
+
+                mRefreshLayout.setRefreshing(false);
+                mErrorView.setVisibility(View.GONE);
+            }
+
+            @Override
+            public void onFailure(NetworkException error) {
+                if (error instanceof LoginRequiredException) {
+                    Toast.makeText(ConfigurationPickerActivity.this, R.string.requires_login, Toast.LENGTH_LONG).show();
+
+                    startActivity(new Intent(ConfigurationPickerActivity.this, LoginActivity.class));
+                    finish();
+                } else {
 
                     mRefreshLayout.setRefreshing(false);
-                    mErrorView.setVisibility(View.GONE);
-                }
-
-                @Override
-                public void onFailure(List<String> errors) {
-                    mRefreshLayout.setRefreshing(false);
-                    mErrorView.setText(getResources().getString(R.string.loading_failed, errors));
+                    mErrorView.setText(getResources().getString(R.string.loading_failed, error.getDescription()));
                     mErrorView.setVisibility(View.VISIBLE);
                 }
-            });
-        } catch (AuthFailureError authFailureError) {
-            authFailureError.printStackTrace();
-
-            Toast.makeText(this, R.string.requires_login, Toast.LENGTH_LONG).show();
-
-            startActivity(new Intent(this, LoginActivity.class));
-            finish();
-        }
+            }
+        });
     }
 
     @Override

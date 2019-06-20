@@ -1,4 +1,4 @@
-package ch.japan_impact.japanimpactpos.network.auth;
+package ch.japan_impact.japanimpactpos.network;
 
 import android.content.Context;
 import android.util.Log;

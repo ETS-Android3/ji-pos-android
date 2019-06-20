@@ -19,21 +19,20 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import ch.japan_impact.japanimpactpos.R;
-import ch.japan_impact.japanimpactpos.data.PosConfigResponse;
-import ch.japan_impact.japanimpactpos.data.PosConfiguration;
-import ch.japan_impact.japanimpactpos.data.PosItem;
+import ch.japan_impact.japanimpactpos.data.pos.PosConfigResponse;
+import ch.japan_impact.japanimpactpos.data.pos.PosConfiguration;
+import ch.japan_impact.japanimpactpos.data.pos.PosItem;
 import ch.japan_impact.japanimpactpos.network.BackendService;
+import ch.japan_impact.japanimpactpos.network.exceptions.LoginRequiredException;
+import ch.japan_impact.japanimpactpos.network.exceptions.NetworkException;
 import ch.japan_impact.japanimpactpos.views.ConfigurationPickerActivity;
 import ch.japan_impact.japanimpactpos.views.LoginActivity;
-import com.android.volley.AuthFailureError;
 import dagger.android.AndroidInjection;
 
 import javax.inject.Inject;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class POSActivity extends AppCompatActivity {
     public static final String TAG = "POSActivity";
@@ -101,33 +100,33 @@ public class POSActivity extends AppCompatActivity {
 
     private void load() {
         adapter.updateGrid(new PosItem[0]);
-        try {
-            backendService.getConfig(this.eventId, this.configId, new BackendService.ApiCallback<PosConfigResponse>() {
-                @Override
-                public void onSuccess(PosConfigResponse data) {
-                    configuration = data.getConfig();
-                    items = data.getItems();
-                    mCard.setVisibility(data.getConfig().isAcceptCards() ? View.VISIBLE : View.GONE);
+        backendService.getConfig(this.eventId, this.configId, new BackendService.ApiCallback<PosConfigResponse>() {
+            @Override
+            public void onSuccess(PosConfigResponse data) {
+                configuration = data.getConfig();
+                items = data.getItems();
+                mCard.setVisibility(data.getConfig().isAcceptCards() ? View.VISIBLE : View.GONE);
 
-                    setTitle("Vente : " + configuration.getName());
+                setTitle("Vente : " + configuration.getName());
 
-                    setupGrid();
-                }
+                setupGrid();
+            }
 
-                @Override
-                public void onFailure(List<String> errors) {
-                    String err = errors.stream().collect(Collectors.joining(", "));
-                    Toast.makeText(POSActivity.this, err, Toast.LENGTH_LONG).show();
+            @Override
+            public void onFailure(NetworkException error) {
+                if (error instanceof LoginRequiredException) {
+                    Toast.makeText(POSActivity.this, R.string.requires_login, Toast.LENGTH_LONG).show();
+
+                    startActivity(new Intent(POSActivity.this, LoginActivity.class));
+                    finish();
+                } else {
+                    Toast.makeText(POSActivity.this, error.getDescription(), Toast.LENGTH_LONG).show();
                     startActivity(new Intent(POSActivity.this, ConfigurationPickerActivity.class));
                     finish();
                 }
-            });
-        } catch (AuthFailureError authFailureError) {
-            Toast.makeText(this, R.string.requires_login, Toast.LENGTH_LONG).show();
+            }
 
-            startActivity(new Intent(this, LoginActivity.class));
-            finish();
-        }
+        });
     }
 
     private class ItemAdapter extends RecyclerView.Adapter<ItemViewHolder> {

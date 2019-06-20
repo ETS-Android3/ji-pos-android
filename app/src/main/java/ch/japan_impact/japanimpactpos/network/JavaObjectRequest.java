@@ -1,12 +1,13 @@
 package ch.japan_impact.japanimpactpos.network;
 
 import androidx.annotation.Nullable;
-import ch.japan_impact.japanimpactpos.network.data.ApiResult;
-import com.android.volley.*;
+import com.android.volley.AuthFailureError;
+import com.android.volley.NetworkResponse;
+import com.android.volley.ParseError;
+import com.android.volley.Response;
 import com.android.volley.toolbox.HttpHeaderParser;
 import com.android.volley.toolbox.JsonRequest;
 import com.google.gson.Gson;
-import org.json.JSONObject;
 
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Type;
@@ -21,7 +22,7 @@ public class JavaObjectRequest<RepType> extends JsonRequest<RepType> {
     private String token;
     private Type repType;
 
-    private JavaObjectRequest(int method, String url, String body, Response.Listener<RepType> listener, @Nullable Response.ErrorListener errorListener, Type type) {
+    JavaObjectRequest(int method, String url, String body, Response.Listener<RepType> listener, @Nullable Response.ErrorListener errorListener, Type type) {
         super(method, url, body, listener, errorListener);
 
         this.repType = type;
@@ -31,14 +32,8 @@ public class JavaObjectRequest<RepType> extends JsonRequest<RepType> {
         this(method, url, null, listener, errorListener, repType);
     }
 
-    static <T> JavaObjectRequest<T> withBody(int method, String url, JSONObject body, Response.Listener<T> listener, @Nullable Response.ErrorListener errorListener, Class<T> repTypeClass) {
-        String strBody = body.toString();
-        return new JavaObjectRequest<>(method, url, strBody, listener, errorListener, repTypeClass);
-    }
-
-    JavaObjectRequest<RepType> setAuthToken(String token) {
+    void setAuthToken(String token) {
         this.token = token;
-        return this;
     }
 
     @Override
@@ -47,20 +42,6 @@ public class JavaObjectRequest<RepType> extends JsonRequest<RepType> {
         if (token != null)
             headers.put("authorization", "Bearer " + token);
         return headers;
-    }
-
-    public static ApiResult parseVolleyError(VolleyError error) {
-        try {
-            if (error == null || error.networkResponse == null || error.networkResponse.data == null)
-                return null;
-
-            String jsonString = new String(error.networkResponse.data, HttpHeaderParser.parseCharset(error.networkResponse.headers, PROTOCOL_CHARSET));
-
-            return gson.fromJson(jsonString, ApiResult.class);
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-            return null;
-        }
     }
 
     @Override

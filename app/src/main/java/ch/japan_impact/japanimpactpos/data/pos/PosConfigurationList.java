@@ -1,4 +1,6 @@
-package ch.japan_impact.japanimpactpos.data;
+package ch.japan_impact.japanimpactpos.data.pos;
+
+import ch.japan_impact.japanimpactpos.data.Event;
 
 import java.util.List;
 

@@ -1,4 +1,4 @@
-package ch.japan_impact.japanimpactpos.data;
+package ch.japan_impact.japanimpactpos.data.pos;
 
 /**
  * @author Louis Vialar

@@ -2,15 +2,17 @@ package ch.japan_impact.japanimpactpos.network;
 
 import android.content.Context;
 import android.util.Log;
-import ch.japan_impact.japanimpactpos.data.PosConfigResponse;
-import ch.japan_impact.japanimpactpos.data.PosConfigurationList;
-import ch.japan_impact.japanimpactpos.network.auth.AuthService;
-import ch.japan_impact.japanimpactpos.network.data.ApiResult;
+import ch.japan_impact.japanimpactpos.data.pos.CheckedOutItem;
+import ch.japan_impact.japanimpactpos.data.pos.PosConfigResponse;
+import ch.japan_impact.japanimpactpos.data.pos.PosConfigurationList;
+import ch.japan_impact.japanimpactpos.data.pos.PosOrderResponse;
+import ch.japan_impact.japanimpactpos.network.exceptions.*;
 import com.android.volley.*;
 import com.android.volley.toolbox.HttpHeaderParser;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.JsonRequest;
 import com.android.volley.toolbox.Volley;
+import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -18,6 +20,7 @@ import org.json.JSONObject;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Type;
 import java.util.*;
 import java.util.function.Consumer;
 
@@ -137,69 +140,53 @@ public class BackendService {
         queue.add(req);
     }
 
-    public void getConfigs(ApiCallback<List<PosConfigurationList>> callback) throws AuthFailureError {
-        getConfigs(callback, false);
-    }
-
-    public void getConfig(int eventId, int id, ApiCallback<PosConfigResponse> callback) throws AuthFailureError {
-        getConfig(eventId, id, callback, false);
-    }
-
-    private <T> void tryRefresh(VolleyError error, boolean isRetry, ApiCallback<T> callback, Consumer<ApiCallback<T>> retry) {
-        if (error instanceof AuthFailureError && !isRetry) {
-            Log.i(TAG, "Trying to refresh token...");
-            this.refreshIdToken(new ApiCallback<Void>() {
-                @Override
-                public void onSuccess(Void data) {
-                    ;
-                    retry.accept(callback);
-                }
-
-                @Override
-                public void onFailure(List<String> errors) {
-                    callback.onFailure(errors);
-                }
-            });
-        } else {
-            callback.failure(error);
-        }
-    }
-
-    private void getConfigs(ApiCallback<List<PosConfigurationList>> callback, boolean isRetry) throws AuthFailureError {
-        if (!storage.isLoggedIn()) {
-            throw new AuthFailureError("Vous devez être connecté pour faire cela.");
-        }
-
+    public void getConfigs(ApiCallback<List<PosConfigurationList>> callback) {
         TypeToken<List<PosConfigurationList>> tt = new TypeToken<List<PosConfigurationList>>() {
         };
-        JavaObjectRequest<List<PosConfigurationList>> request =
-                new JavaObjectRequest<>(Request.Method.GET, API_URL + "/pos/configurations",
-                        callback::onSuccess, error -> tryRefresh(error, isRetry, callback, c -> {
-                    try {
-                        getConfigs(c, true);
-                    } catch (AuthFailureError authFailureError) {
-                        callback.failure(authFailureError);
-                    }
-                }), tt.getType());
-
-        request.setAuthToken(storage.getIdToken());
-        queue.add(request);
+        sendAuthenticatedRequest(tt.getType(), Request.Method.GET, API_URL + "/pos/configurations", callback);
     }
 
-    private void getConfig(int eventId, int id, ApiCallback<PosConfigResponse> callback, boolean isRetry) throws AuthFailureError {
+    public void getConfig(int eventId, int id, ApiCallback<PosConfigResponse> callback) {
+        sendAuthenticatedRequest(PosConfigResponse.class, Request.Method.GET, API_URL + "/pos/configurations/" + eventId + "/" + id, callback);
+    }
+
+    public void placeOrder(Collection<CheckedOutItem> content, ApiCallback<PosOrderResponse> callback) {
+        sendAuthenticatedRequest(PosOrderResponse.class, Request.Method.POST, API_URL + "/checkout", new Gson().toJson(content), callback);
+    }
+
+    private <T> void sendAuthenticatedRequest(Type clazz, int method, String url, String body, ApiCallback<T> listener) {
+        sendAuthenticatedRequest(clazz, method, url, body, listener, true);
+    }
+
+    private <T> void sendAuthenticatedRequest(Type clazz, int method, String url, ApiCallback<T> listener) {
+        sendAuthenticatedRequest(clazz, method, url, null, listener);
+    }
+
+    private <T> void sendAuthenticatedRequest(Type clazz, int method, String url, String body, ApiCallback<T> listener, boolean retry) {
         if (!storage.isLoggedIn()) {
-            throw new AuthFailureError("Vous devez être connecté pour faire cela.");
+            listener.onFailure(new LoginRequiredException());
+            return;
         }
 
-        JavaObjectRequest<PosConfigResponse> request =
-                new JavaObjectRequest<>(Request.Method.GET, API_URL + "/pos/configurations/" + eventId + "/" + id,
-                        callback::onSuccess, error -> tryRefresh(error, isRetry, callback, c -> {
-                    try {
-                        getConfig(eventId, id, c, true);
-                    } catch (AuthFailureError authFailureError) {
-                        callback.failure(authFailureError);
+        JavaObjectRequest<T> request = new JavaObjectRequest<>(method, url, body, listener::onSuccess, error -> {
+            if (error instanceof AuthFailureError && retry) {
+                Log.i(TAG, "Trying to refresh token...");
+                this.refreshIdToken(new ApiCallback<Void>() {
+                    @Override
+                    public void onSuccess(Void data) {
+                        sendAuthenticatedRequest(clazz, method, url, body, listener, false);
                     }
-                }), PosConfigResponse.class);
+
+                    @Override
+                    public void onFailure(NetworkException ignored) {
+                        ignored.printStackTrace();
+                        listener.failure(error);
+                    }
+                });
+            } else {
+                listener.failure(error); // Pass the initial error
+            }
+        }, clazz);
 
         request.setAuthToken(storage.getIdToken());
         queue.add(request);
@@ -207,19 +194,27 @@ public class BackendService {
 
     public interface ApiCallback<T> {
         default void failure(String error) {
-            onFailure(Collections.singletonList(error));
+            onFailure(new GenericNetworkException(error));
         }
 
         default void failure(VolleyError error) {
-            ApiResult result = JavaObjectRequest.parseVolleyError(error);
-
-            if (result == null) failure(error.getMessage());
-            else onFailure(result.getErrors());
+            if (error.networkResponse != null) {
+                try {
+                    if (error.networkResponse.statusCode == 401 || error.networkResponse.statusCode == 403) {
+                        onFailure(new AuthorizationError(error));
+                    } else onFailure(new ApiException(error));
+                } catch (NullPointerException | UnsupportedEncodingException | JSONException e) {
+                    e.printStackTrace();
+                    onFailure(new VolleyException(error));
+                }
+            } else {
+                onFailure(new VolleyException(error));
+            }
         }
 
         void onSuccess(T data);
 
-        void onFailure(List<String> errors);
+        void onFailure(NetworkException error);
 
     }
 }
