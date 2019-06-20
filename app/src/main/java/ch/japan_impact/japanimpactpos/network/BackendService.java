@@ -1,9 +1,8 @@
 package ch.japan_impact.japanimpactpos.network;
 
 import android.content.Context;
-import android.graphics.Path;
 import android.util.Log;
-import ch.japan_impact.japanimpactpos.data.PosConfiguration;
+import ch.japan_impact.japanimpactpos.data.PosConfigResponse;
 import ch.japan_impact.japanimpactpos.data.PosConfigurationList;
 import ch.japan_impact.japanimpactpos.network.auth.AuthService;
 import ch.japan_impact.japanimpactpos.network.data.ApiResult;
@@ -142,12 +141,17 @@ public class BackendService {
         getConfigs(callback, false);
     }
 
+    public void getConfig(int eventId, int id, ApiCallback<PosConfigResponse> callback) throws AuthFailureError {
+        getConfig(eventId, id, callback, false);
+    }
+
     private <T> void tryRefresh(VolleyError error, boolean isRetry, ApiCallback<T> callback, Consumer<ApiCallback<T>> retry) {
         if (error instanceof AuthFailureError && !isRetry) {
             Log.i(TAG, "Trying to refresh token...");
             this.refreshIdToken(new ApiCallback<Void>() {
                 @Override
-                public void onSuccess(Void data) {;
+                public void onSuccess(Void data) {
+                    ;
                     retry.accept(callback);
                 }
 
@@ -171,12 +175,31 @@ public class BackendService {
         JavaObjectRequest<List<PosConfigurationList>> request =
                 new JavaObjectRequest<>(Request.Method.GET, API_URL + "/pos/configurations",
                         callback::onSuccess, error -> tryRefresh(error, isRetry, callback, c -> {
-                            try {
-                                getConfigs(c, true);
-                            } catch (AuthFailureError authFailureError) {
-                                callback.failure(authFailureError);
-                            }
-                        }), tt.getType());
+                    try {
+                        getConfigs(c, true);
+                    } catch (AuthFailureError authFailureError) {
+                        callback.failure(authFailureError);
+                    }
+                }), tt.getType());
+
+        request.setAuthToken(storage.getIdToken());
+        queue.add(request);
+    }
+
+    private void getConfig(int eventId, int id, ApiCallback<PosConfigResponse> callback, boolean isRetry) throws AuthFailureError {
+        if (!storage.isLoggedIn()) {
+            throw new AuthFailureError("Vous devez être connecté pour faire cela.");
+        }
+
+        JavaObjectRequest<PosConfigResponse> request =
+                new JavaObjectRequest<>(Request.Method.GET, API_URL + "/pos/configurations/" + eventId + "/" + id,
+                        callback::onSuccess, error -> tryRefresh(error, isRetry, callback, c -> {
+                    try {
+                        getConfig(eventId, id, c, true);
+                    } catch (AuthFailureError authFailureError) {
+                        callback.failure(authFailureError);
+                    }
+                }), PosConfigResponse.class);
 
         request.setAuthToken(storage.getIdToken());
         queue.add(request);

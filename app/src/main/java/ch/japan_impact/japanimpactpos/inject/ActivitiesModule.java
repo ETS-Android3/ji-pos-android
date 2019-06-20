@@ -1,7 +1,8 @@
 package ch.japan_impact.japanimpactpos.inject;
 
-import ch.japan_impact.japanimpactpos.ConfigurationPickerActivity;
-import ch.japan_impact.japanimpactpos.LoginActivity;
+import ch.japan_impact.japanimpactpos.views.ConfigurationPickerActivity;
+import ch.japan_impact.japanimpactpos.views.LoginActivity;
+import ch.japan_impact.japanimpactpos.views.pos.POSActivity;
 import dagger.Module;
 import dagger.android.AndroidInjectionModule;
 import dagger.android.ContributesAndroidInjector;
@@ -17,4 +18,6 @@ abstract class ActivitiesModule {
     abstract LoginActivity loginActivity();
     @ContributesAndroidInjector
     abstract ConfigurationPickerActivity pickerActivity();
+    @ContributesAndroidInjector
+    abstract POSActivity posActivity();
 }

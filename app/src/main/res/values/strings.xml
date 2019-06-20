@@ -14,4 +14,5 @@
     <string name="loading_text">Chargement des configurations...</string>
     <string name="loading_failed">Echec de chargement : %1$s</string>
     <string name="requires_login">Connexion nécessaire.</string>
+    <string name="cart_name">Panier</string>
 </resources>

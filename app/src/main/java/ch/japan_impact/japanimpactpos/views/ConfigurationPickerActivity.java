@@ -1,4 +1,4 @@
-package ch.japan_impact.japanimpactpos;
+package ch.japan_impact.japanimpactpos.views;
 
 import android.content.Context;
 import android.content.Intent;
@@ -7,7 +7,6 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
@@ -16,9 +15,11 @@ import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import ch.japan_impact.japanimpactpos.R;
 import ch.japan_impact.japanimpactpos.data.PosConfiguration;
 import ch.japan_impact.japanimpactpos.data.PosConfigurationList;
 import ch.japan_impact.japanimpactpos.network.BackendService;
+import ch.japan_impact.japanimpactpos.views.pos.POSActivity;
 import com.android.volley.AuthFailureError;
 import dagger.android.AndroidInjection;
 
@@ -159,8 +160,12 @@ public class ConfigurationPickerActivity extends AppCompatActivity {
 
         @Override
         public void onClick(View v) {
-            // TODO: Start new activity
-            Toast.makeText(ConfigurationPickerActivity.this, "Clicked on " + configuration.getName() + " " + configuration.getId(), Toast.LENGTH_LONG).show();
+            Intent openIntent = new Intent(ConfigurationPickerActivity.this, POSActivity.class);
+            openIntent.putExtra(POSActivity.POS_CONFIG_ID, configuration.getId());
+            openIntent.putExtra(POSActivity.POS_EVENT_ID, configuration.getEventId());
+            Toast.makeText(ConfigurationPickerActivity.this, "Ouverture de " + configuration.getName(), Toast.LENGTH_SHORT).show();
+
+            startActivity(openIntent);
         }
     }
 }
