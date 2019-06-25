@@ -49,6 +49,32 @@
                         android:layout_width="match_parent"
                         android:layout_height="match_parent" android:id="@+id/recycler"
                         android:layout_margin="8dp"/>
+
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                    <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/logged_in_to_ji" />
+
+                    <Button android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/logout" android:id="@+id/ji_logout" />
+
+
+                </LinearLayout>
+
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                    <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="2"
+                            android:id="@+id/sumup_status"
+                        />
+
+                    <Button android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/logout" android:id="@+id/sumup_logout" />
+                    <Button android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/setup_sumup" android:id="@+id/sumup_setup" />
+
+
+                </LinearLayout>
             </LinearLayout>
         </ScrollView>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>

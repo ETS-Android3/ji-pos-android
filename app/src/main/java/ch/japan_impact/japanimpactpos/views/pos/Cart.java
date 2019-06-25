@@ -33,7 +33,12 @@ public class Cart {
     private final POSActivity activity;
     private final MutableLiveData<Integer> totalPrice = new MutableLiveData<>();
 
-    public Cart(POSActivity activity) {
+    private boolean enabled = true;
+    private boolean changed = false;
+    private int orderId = -1;
+    private int serverPrice = -1;
+
+    Cart(POSActivity activity) {
         this.activity = activity;
         this.totalPrice.setValue(0);
     }
@@ -41,6 +46,20 @@ public class Cart {
     public void clear() {
         synchronized (content) {
             this.content.clear();
+            this.orderId = -1;
+            this.serverPrice = -1;
+            this.changed = false;
+            this.totalPrice.setValue(0);
+
+            adapter.notifyDataSetChanged();
+        }
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+        if (this.enabled) {
+            this.orderId = -1;
+            this.serverPrice = -1;
         }
     }
 
@@ -66,6 +85,7 @@ public class Cart {
     public void addItem(JIItem item) {
         synchronized (content) {
             totalPrice.setValue(totalPrice.getValue() + item.getPrice());
+            changed = true;
 
             for (CartedItem c : content) {
                 if (c.item.getId() == item.getId()) {
@@ -94,10 +114,32 @@ public class Cart {
                         iter.remove();
                         adapter.notifyDataSetChanged();
                     }
+                    changed = true;
                     return;
                 }
             }
         }
+    }
+
+    public int getOrderId() {
+        return orderId;
+    }
+
+    public int getServerPrice() {
+        return serverPrice;
+    }
+
+    public void setServerResponse(int orderId, int serverPrice) {
+        this.orderId = orderId;
+        this.serverPrice = serverPrice;
+    }
+
+    public boolean isChanged() {
+        return changed;
+    }
+
+    public void resetChangeCounter() {
+        this.changed = false;
     }
 
     class CartedItem {
@@ -170,6 +212,11 @@ public class Cart {
         @Override
         public void onClick(View v) {
             if (this.item != null) {
+                if (!enabled) {
+                    Toast.makeText(activity, "Le composant est désactivé !", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
                 removeItem(this.item.item);
                 Toast.makeText(activity, "Retiré: 1x " + item.item.getName(), Toast.LENGTH_SHORT).show();
             }

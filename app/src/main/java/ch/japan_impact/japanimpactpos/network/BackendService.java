@@ -2,6 +2,10 @@ package ch.japan_impact.japanimpactpos.network;
 
 import android.content.Context;
 import android.util.Log;
+import androidx.annotation.Nullable;
+import ch.japan_impact.japanimpactpos.R;
+import ch.japan_impact.japanimpactpos.data.ApiResult;
+import ch.japan_impact.japanimpactpos.data.PaymentMethod;
 import ch.japan_impact.japanimpactpos.data.pos.CheckedOutItem;
 import ch.japan_impact.japanimpactpos.data.pos.PosConfigResponse;
 import ch.japan_impact.japanimpactpos.data.pos.PosConfigurationList;
@@ -31,7 +35,7 @@ import java.util.function.Consumer;
 public class BackendService {
     private static final String TAG = "Backend";
     private static final String PREFERENCE_KEY = "saved_login_tokens";
-    private static final String API_URL = "https://shop.japan-impact.ch/api";
+    private final String API_URL;
 
     private final RequestQueue queue;
     private final Context ctx;
@@ -43,6 +47,7 @@ public class BackendService {
         this.queue = Volley.newRequestQueue(ctx.getApplicationContext());
         this.service = service;
         this.ctx = ctx;
+        this.API_URL = ctx.getResources().getString(R.string.api_url);
         this.storage = new TokenStorage(ctx.getSharedPreferences(PREFERENCE_KEY, Context.MODE_PRIVATE));
     }
 
@@ -151,7 +156,28 @@ public class BackendService {
     }
 
     public void placeOrder(Collection<CheckedOutItem> content, ApiCallback<PosOrderResponse> callback) {
-        sendAuthenticatedRequest(PosOrderResponse.class, Request.Method.POST, API_URL + "/checkout", new Gson().toJson(content), callback);
+        sendAuthenticatedRequest(PosOrderResponse.class, Request.Method.POST, API_URL + "/pos/checkout", "{\"items\": " + new Gson().toJson(content) + "}", callback);
+    }
+
+    public void sendPOSLog(int orderId, PaymentMethod method, boolean accepted, @Nullable String message, ApiCallback<ApiResult> callback) {
+        this.sendPOSLog(orderId, method, accepted, message, null, null, null, callback);
+    }
+
+    public void sendPOSLog(int orderid, PaymentMethod method, boolean accepted, @Nullable String message, @Nullable String txCode, @Nullable String failureCause, @Nullable Boolean cardReceiptSend, ApiCallback<ApiResult> callback) {
+        JSONObject o = new JSONObject();
+        try {
+            o.put("paymentMethod", method.name())
+                    .put("accepted", accepted);
+
+            if (message != null) o.put("cardTransactionMessage", message);
+            if (txCode != null) o.put("cardTransactionCode", txCode);
+            if (failureCause != null) o.put("cardTransactionFailureCause", failureCause);
+            if (cardReceiptSend != null) o.put("cardReceiptSend", cardReceiptSend.booleanValue());
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        sendAuthenticatedRequest(ApiResult.class, Request.Method.POST, API_URL + "/pos/paymentLog/" + orderid, o.toString(), callback);
     }
 
     private <T> void sendAuthenticatedRequest(Type clazz, int method, String url, String body, ApiCallback<T> listener) {
@@ -180,7 +206,8 @@ public class BackendService {
                     @Override
                     public void onFailure(NetworkException ignored) {
                         ignored.printStackTrace();
-                        listener.failure(error);
+                        storage.logout();
+                        listener.onFailure(new LoginRequiredException());
                     }
                 });
             } else {

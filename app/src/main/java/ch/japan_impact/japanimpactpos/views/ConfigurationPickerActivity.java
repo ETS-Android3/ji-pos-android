@@ -7,6 +7,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
@@ -22,6 +24,8 @@ import ch.japan_impact.japanimpactpos.network.BackendService;
 import ch.japan_impact.japanimpactpos.network.exceptions.LoginRequiredException;
 import ch.japan_impact.japanimpactpos.network.exceptions.NetworkException;
 import ch.japan_impact.japanimpactpos.views.pos.POSActivity;
+import com.sumup.merchant.api.SumUpAPI;
+import com.sumup.merchant.api.SumUpLogin;
 import dagger.android.AndroidInjection;
 
 import javax.inject.Inject;
@@ -33,6 +37,10 @@ public class ConfigurationPickerActivity extends AppCompatActivity {
     private static final String TAG = "ConfigurationPickerActivity";
 
     private TextView mErrorView;
+    private TextView mSumUpStatus;
+    private Button mSumUpLogout;
+    private Button mSumUpSetup;
+    private Button mJiLogout;
     private SwipeRefreshLayout mRefreshLayout;
     private ConfigurationAdapter adapter;
 
@@ -46,6 +54,24 @@ public class ConfigurationPickerActivity extends AppCompatActivity {
         setContentView(R.layout.activity_configuration_picker);
 
         this.mErrorView = findViewById(R.id.error_message);
+        this.mSumUpStatus = findViewById(R.id.sumup_status);
+        this.mSumUpLogout = findViewById(R.id.sumup_logout);
+        this.mSumUpLogout.setOnClickListener(v -> {
+            if (SumUpAPI.isLoggedIn()) {
+                SumUpAPI.logout();
+                sumUpRefresh();
+            } else {
+                SumUpAPI.openLoginActivity(this, SumUpLogin.builder(getString(R.string.sumup_affiliate_key)).build(), 1);
+            }
+        });
+        this.mSumUpSetup = findViewById(R.id.sumup_setup);
+        this.mSumUpSetup.setOnClickListener(v -> SumUpAPI.openPaymentSettingsActivity(this, 1));
+        this.mJiLogout = findViewById(R.id.ji_logout);
+        this.mJiLogout.setOnClickListener(v -> {
+            backend.getStorage().logout();
+            startActivity(new Intent(this, LoginActivity.class));
+        });
+
         RecyclerView recycler = findViewById(R.id.recycler);
         this.mRefreshLayout = findViewById(R.id.refresh_layout);
 
@@ -65,9 +91,22 @@ public class ConfigurationPickerActivity extends AppCompatActivity {
         mRefreshLayout.setOnRefreshListener(this::refresh);
     }
 
+    @Override
+    protected void onPostResume() {
+        super.onPostResume();
+        this.sumUpRefresh();
+    }
+
+    private void sumUpRefresh() {
+        this.mSumUpStatus.setText(SumUpAPI.isLoggedIn() ? "SumUp: Connecté avec " + SumUpAPI.getCurrentMerchant().getMerchantCode() : "SumUp: Déconnecté");
+        this.mSumUpLogout.setText(SumUpAPI.isLoggedIn() ? R.string.logout : R.string.login);
+        this.mSumUpSetup.setVisibility(SumUpAPI.isLoggedIn() ? View.VISIBLE : View.GONE);
+        ((LinearLayout.LayoutParams) this.mSumUpLogout.getLayoutParams()).weight = SumUpAPI.isLoggedIn() ? 1 : 2;
+    }
+
     private void refresh() {
         this.mRefreshLayout.setRefreshing(true);
-
+        this.sumUpRefresh();
 
         backend.getConfigs(new BackendService.ApiCallback<List<PosConfigurationList>>() {
             @Override

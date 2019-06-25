@@ -14,28 +14,40 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import ch.japan_impact.japanimpactpos.R;
+import ch.japan_impact.japanimpactpos.data.ApiResult;
+import ch.japan_impact.japanimpactpos.data.PaymentMethod;
 import ch.japan_impact.japanimpactpos.data.pos.PosConfigResponse;
 import ch.japan_impact.japanimpactpos.data.pos.PosConfiguration;
 import ch.japan_impact.japanimpactpos.data.pos.PosItem;
+import ch.japan_impact.japanimpactpos.data.pos.PosOrderResponse;
 import ch.japan_impact.japanimpactpos.network.BackendService;
 import ch.japan_impact.japanimpactpos.network.exceptions.LoginRequiredException;
 import ch.japan_impact.japanimpactpos.network.exceptions.NetworkException;
 import ch.japan_impact.japanimpactpos.views.ConfigurationPickerActivity;
 import ch.japan_impact.japanimpactpos.views.LoginActivity;
+import com.sumup.merchant.api.SumUpAPI;
+import com.sumup.merchant.api.SumUpLogin;
+import com.sumup.merchant.api.SumUpPayment;
 import dagger.android.AndroidInjection;
 
 import javax.inject.Inject;
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
+import java.util.function.Consumer;
 
 public class POSActivity extends AppCompatActivity {
-    public static final String TAG = "POSActivity";
+    private static final int SUMUP_LOGIN_REQUEST_CODE = 1;
+    private static final int SUMUP_PREPARE_REQUEST_CODE = 2;
+    private static final String TAG = "POSActivity";
     public static final String POS_CONFIG_ID = "POS_CONFIG_ID";
     public static final String POS_EVENT_ID = "POS_EVENT_ID";
 
@@ -53,8 +65,16 @@ public class POSActivity extends AppCompatActivity {
     private ItemAdapter adapter;
     private Cart cart;
 
+    private boolean disabled = false;
+
+    private PosOrderResponse currentPayment = null;
+    private PaymentMethod currentMethod = null;
+
     @Inject
     BackendService backendService;
+
+    @Inject
+    CartService cartService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,9 +96,11 @@ public class POSActivity extends AppCompatActivity {
         mPosView = findViewById(R.id.pos_view);
         mCartPrice = findViewById(R.id.cart_total_price);
         mCard = findViewById(R.id.cart_pay_card);
+        mCard.setOnClickListener(v -> startPayment(PaymentMethod.CARD, this::cardPayment));
         mCash = findViewById(R.id.cart_pay_cash);
+        mCash.setOnClickListener(v -> startPayment(PaymentMethod.CASH, this::cashPayment));
 
-        cart = new Cart(this);
+        cart = cartService.createCart(configId, this);
         cart.getPrice().observe(this, p -> mCartPrice.setText("Total : " + p + ".-"));
 
         adapter = new ItemAdapter();
@@ -89,6 +111,106 @@ public class POSActivity extends AppCompatActivity {
         mCartView.setAdapter(cart.getAdapter());
 
         load();
+    }
+
+    private void setEnabled(boolean enabled) {
+        this.disabled = !enabled;
+        this.mCash.setEnabled(enabled);
+        this.mCard.setEnabled(enabled);
+        this.cart.setEnabled(enabled);
+    }
+
+    private void startPayment(PaymentMethod method, Consumer<PosOrderResponse> callback) {
+        this.setEnabled(false);
+
+        // TODO: display wait modal
+
+        Consumer<PosOrderResponse> contPayment = data -> {
+            backendService.sendPOSLog(data.getOrderId(), PaymentMethod.CASH, false, method + " native android payment start", new BackendService.ApiCallback<ApiResult>() {
+                @Override
+                public void onSuccess(ApiResult u) {
+                    if (u.isSuccess())
+                        callback.accept(data);
+                    else {
+                        Toast.makeText(POSActivity.this, "Oups... Une erreur inconnue (200) s'est produite", Toast.LENGTH_LONG).show();
+                        setEnabled(true);
+                    }
+                }
+
+                @Override
+                public void onFailure(NetworkException error) {
+                    Toast.makeText(POSActivity.this, "Oups... Une erreur s'est produite: " + error.getDescription(), Toast.LENGTH_LONG).show();
+                    error.printStackTrace();
+                    setEnabled(true);
+                }
+            });
+        };
+
+        if (this.currentPayment != null && !cart.isChanged()) {
+            // Cart didn't change!
+            currentMethod = method;
+
+            contPayment.accept(currentPayment);
+        } else backendService.placeOrder(this.cart.getOrder(), new BackendService.ApiCallback<PosOrderResponse>() {
+            @Override
+            public void onSuccess(PosOrderResponse data) {
+                cart.setServerResponse(data.getOrderId(), data.getPrice());
+                currentPayment = data;
+                currentMethod = method;
+
+                contPayment.accept(data);
+            }
+
+            @Override
+            public void onFailure(NetworkException error) {
+                setEnabled(true);
+
+                if (error instanceof LoginRequiredException) {
+                    Toast.makeText(POSActivity.this, R.string.requires_login, Toast.LENGTH_LONG).show();
+
+                    startActivity(new Intent(POSActivity.this, LoginActivity.class));
+                    finish();
+                } else {
+                    Toast.makeText(POSActivity.this, error.getDescription(), Toast.LENGTH_LONG).show();
+                }
+            }
+        });
+    }
+
+    private void cardPayment(PosOrderResponse response) {
+        SumUpPayment payment = SumUpPayment.builder()
+                // mandatory parameters
+                .total(new BigDecimal(response.getPrice())) // minimum 1.00
+                .currency(SumUpPayment.Currency.CHF)
+                .title("JapanImpact")
+
+                // TODO: handle receipts?
+                //.receiptEmail("customer@mail.com")
+                //.receiptSMS("+3531234567890")
+
+                // optional: foreign transaction ID, must be unique!
+                .foreignTransactionId(UUID.randomUUID().toString())  // can not exceed 128 chars
+
+                // optional: skip the success screen
+                //.skipSuccessScreen()
+                .build();
+
+        SumUpAPI.checkout(this, payment, requestCode());
+
+    }
+
+    private void cashPayment(PosOrderResponse response) {
+        Intent i = new Intent(this, CashPaymentActivity.class);
+        i.putExtra(CashPaymentActivity.PRICE_TO_PAY, response.getPrice());
+        startActivityForResult(i, requestCode());
+    }
+
+    private int requestCode() {
+        return requestCode(currentPayment.getOrderId());
+    }
+
+    private static int requestCode(int orderId) {
+        return 5 * (orderId % (1 << 15));
     }
 
     private void setupGrid() {
@@ -106,8 +228,16 @@ public class POSActivity extends AppCompatActivity {
                 configuration = data.getConfig();
                 items = data.getItems();
                 mCard.setVisibility(data.getConfig().isAcceptCards() ? View.VISIBLE : View.GONE);
-
                 setTitle("Vente : " + configuration.getName());
+
+                // Check cards
+                if (data.getConfig().isAcceptCards()) {
+                    if (!SumUpAPI.isLoggedIn()) {
+                        SumUpAPI.openLoginActivity(POSActivity.this, SumUpLogin.builder(getString(R.string.sumup_affiliate_key)).build(), SUMUP_LOGIN_REQUEST_CODE);
+                    } else {
+                        SumUpAPI.openPaymentSettingsActivity(POSActivity.this, SUMUP_PREPARE_REQUEST_CODE);
+                    }
+                }
 
                 setupGrid();
             }
@@ -127,6 +257,77 @@ public class POSActivity extends AppCompatActivity {
             }
 
         });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        if (requestCode == SUMUP_LOGIN_REQUEST_CODE) {
+            if (!SumUpAPI.isLoggedIn()) {
+                Toast.makeText(this, "Erreur de connexion SumUp, désactivation des cartes bancaires.", Toast.LENGTH_SHORT).show();
+                this.mCard.setVisibility(View.GONE);
+            } else {
+                SumUpAPI.openPaymentSettingsActivity(this, SUMUP_PREPARE_REQUEST_CODE);
+            }
+        } else if (currentPayment != null && requestCode == requestCode() && data != null) {
+            if (currentMethod == PaymentMethod.CARD) {
+                int res = data.getExtras().getInt(SumUpAPI.Response.RESULT_CODE);
+                String txCode = data.getExtras().getString(SumUpAPI.Response.TX_CODE);
+                String msg = data.getExtras().getString(SumUpAPI.Response.MESSAGE);
+                boolean receipt = data.getExtras().getBoolean(SumUpAPI.Response.RECEIPT_SENT);
+
+                if (res != SumUpAPI.Response.ResultCode.SUCCESSFUL) {
+                    Toast.makeText(POSActivity.this, "Erreur SumUp: " + msg, Toast.LENGTH_LONG).show();
+                }
+
+                confirmPayment(res == SumUpAPI.Response.ResultCode.SUCCESSFUL,
+                        c -> backendService.sendPOSLog(currentPayment.getOrderId(), PaymentMethod.CARD, res == SumUpAPI.Response.ResultCode.SUCCESSFUL, msg, txCode, null, receipt, c));
+            } else if (currentMethod == PaymentMethod.CASH) {
+                boolean res = data.getExtras().getBoolean(CashPaymentActivity.IS_SUCCESSFUL_PAYMENT);
+
+                confirmPayment(res,
+                        c -> backendService.sendPOSLog(currentPayment.getOrderId(), PaymentMethod.CASH, res, "Android Native cash transaction " + (res ? "success" : "failure"), c));
+            } else {
+                Toast.makeText(this, "Erreur: confirmation de paiement reçue mais aucune méthode configurée.", Toast.LENGTH_SHORT).show();
+            }
+        } else if (requestCode == SUMUP_PREPARE_REQUEST_CODE) {
+            SumUpAPI.prepareForCheckout();
+        } else {
+            Toast.makeText(this, "Retour inconnu depuis une application, réactivation.", Toast.LENGTH_LONG).show();
+            setEnabled(true);
+        }
+        super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    private void confirmPayment(boolean paymentSuccess, Consumer<BackendService.ApiCallback<ApiResult>> logSender) {
+        BackendService.ApiCallback<ApiResult> cb = new BackendService.ApiCallback<ApiResult>() {
+            @Override
+            public void onSuccess(ApiResult data) {
+                if (paymentSuccess) {
+                    // TODO: display cart
+
+                    Toast.makeText(POSActivity.this, "Paiement accepté! (soon liste)", Toast.LENGTH_SHORT).show();
+
+                    cart.clear();
+                    setEnabled(true);
+                    currentPayment = null;
+                    currentMethod = null;
+                } else {
+                    setEnabled(true);
+                    cart.resetChangeCounter();
+
+                    Toast.makeText(POSActivity.this, "Paiement refusé. N'hésitez pas à réessayer.", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(NetworkException error) {
+                // TODO : efficient error reporting
+                setEnabled(true);
+                cart.resetChangeCounter();
+            }
+        };
+
+        logSender.accept(cb);
     }
 
     private class ItemAdapter extends RecyclerView.Adapter<ItemViewHolder> {
@@ -193,6 +394,11 @@ public class POSActivity extends AppCompatActivity {
         @Override
         public void onClick(View v) {
             if (item != null) {
+                if (disabled) {
+                    Toast.makeText(POSActivity.this, "Le composant est désactivé !", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
                 cart.addItem(item.getItem());
                 Toast.makeText(POSActivity.this, "Ajouté: " + item.getItem().getName(), Toast.LENGTH_SHORT).show();
             }

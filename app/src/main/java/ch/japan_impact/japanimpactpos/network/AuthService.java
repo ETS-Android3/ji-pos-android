@@ -2,6 +2,7 @@ package ch.japan_impact.japanimpactpos.network;
 
 import android.content.Context;
 import android.util.Log;
+import ch.japan_impact.japanimpactpos.R;
 import com.android.volley.*;
 import com.android.volley.toolbox.HttpHeaderParser;
 import com.android.volley.toolbox.JsonObjectRequest;
@@ -19,8 +20,8 @@ import java.util.function.Consumer;
  */
 @Singleton
 public class AuthService {
-    private static final String API_URL = "https://auth.japan-impact.ch/";
-    private static final String CLIENT_ID = "8pdszcUWxht75pmttKnyAxxHzc9HarutYvScP6uHq5WsDXJqGfQcWeCRHGZgHwtGE9dQvKgu";
+    private final String API_URL;
+    private final String CLIENT_ID;
     private final RequestQueue queue;
     private final Context ctx;
 
@@ -28,6 +29,8 @@ public class AuthService {
     public AuthService(Context ctx) {
         this.ctx = ctx;
         this.queue = Volley.newRequestQueue(ctx.getApplicationContext());
+        this.CLIENT_ID = ctx.getResources().getString(R.string.auth_client_id);
+        this.API_URL = ctx.getResources().getString(R.string.auth_api_url);
     }
 
     public enum ErrorCodes {
