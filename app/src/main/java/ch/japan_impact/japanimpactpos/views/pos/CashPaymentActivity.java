@@ -69,7 +69,10 @@ public class CashPaymentActivity extends AppCompatActivity {
                 try {
                     int changeGiven = Integer.parseInt(s.toString());
                     int diff = changeGiven - price;
-                    change.setText("Rendre " + diff + " .-");
+
+                    if (diff < 0)
+                        change.setText("Pas encore assez d'argent");
+                    else change.setText("Rendre " + diff + " .-");
                 } catch (NumberFormatException e) {
                     Toast.makeText(CashPaymentActivity.this, "Valeur entrée incorrecte", Toast.LENGTH_SHORT).show();
                 }

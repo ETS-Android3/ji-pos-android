@@ -43,6 +43,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class POSActivity extends AppCompatActivity {
     private static final int SUMUP_LOGIN_REQUEST_CODE = 1;
@@ -121,6 +122,11 @@ public class POSActivity extends AppCompatActivity {
     }
 
     private void startPayment(PaymentMethod method, Consumer<PosOrderResponse> callback) {
+        if (this.cart.getOrder().isEmpty()) {
+            Toast.makeText(this, "Le panier est vide !", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         this.setEnabled(false);
 
         // TODO: display wait modal
@@ -173,21 +179,16 @@ public class POSActivity extends AppCompatActivity {
     }
 
     private void cardPayment(PosOrderResponse response) {
+        if (response.getPrice() < 1) {
+            Toast.makeText(this, "Impossible de gérer par carte des paiements de moins de 1.-", Toast.LENGTH_SHORT).show();
+            postPaymentRefused();
+            return;
+        }
+
         SumUpPayment payment = SumUpPayment.builder()
-                // mandatory parameters
-                .total(new BigDecimal(response.getPrice())) // minimum 1.00
+                .total(new BigDecimal(response.getPrice()))
                 .currency(SumUpPayment.Currency.CHF)
                 .title("JapanImpact")
-
-                // TODO: handle receipts?
-                //.receiptEmail("customer@mail.com")
-                //.receiptSMS("+3531234567890")
-
-                // optional: foreign transaction ID, must be unique!
-                .foreignTransactionId(UUID.randomUUID().toString())  // can not exceed 128 chars
-
-                // optional: skip the success screen
-                //.skipSuccessScreen()
                 .build();
 
         SumUpAPI.checkout(this, payment, requestCode());
@@ -275,12 +276,14 @@ public class POSActivity extends AppCompatActivity {
                 }
 
                 confirmPayment(res == SumUpAPI.Response.ResultCode.SUCCESSFUL,
-                        c -> backendService.sendPOSLog(currentPayment.getOrderId(), PaymentMethod.CARD, res == SumUpAPI.Response.ResultCode.SUCCESSFUL, msg, txCode, null, receipt, c));
+                        c -> backendService.sendPOSLog(currentPayment.getOrderId(), PaymentMethod.CARD, res == SumUpAPI.Response.ResultCode.SUCCESSFUL, msg, txCode, null, receipt, c),
+                        () -> "order=" + currentPayment.getOrderId() + ", method=" + currentMethod + ", txCode=" + txCode + ", receipt=" + receipt);
             } else if (currentMethod == PaymentMethod.CASH) {
                 boolean res = data.getExtras().getBoolean(CashPaymentActivity.IS_SUCCESSFUL_PAYMENT);
 
                 confirmPayment(res,
-                        c -> backendService.sendPOSLog(currentPayment.getOrderId(), PaymentMethod.CASH, res, "Android Native cash transaction " + (res ? "success" : "failure"), c));
+                        c -> backendService.sendPOSLog(currentPayment.getOrderId(), PaymentMethod.CASH, res, "Android Native cash transaction " + (res ? "success" : "failure"), c),
+                        () -> "order=" + currentPayment.getOrderId() + ", method=" + currentMethod);
             } else {
                 Toast.makeText(this, "Erreur: confirmation de paiement reçue mais aucune méthode configurée.", Toast.LENGTH_SHORT).show();
             }
@@ -293,36 +296,83 @@ public class POSActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
     }
 
-    private void confirmPayment(boolean paymentSuccess, Consumer<BackendService.ApiCallback<ApiResult>> logSender) {
+    /**
+     * Logs the payment confirmation and finishes the payment process
+     * @param paymentSuccess whether the payment was accepted or not
+     * @param logSender a method consumming a callback and sending a POS log
+     * @param debugString the main data to write down in case the server refuses to ACK
+     */
+    private void confirmPayment(boolean paymentSuccess, Consumer<BackendService.ApiCallback<ApiResult>> logSender, Supplier<String> debugString) {
         BackendService.ApiCallback<ApiResult> cb = new BackendService.ApiCallback<ApiResult>() {
             @Override
             public void onSuccess(ApiResult data) {
                 if (paymentSuccess) {
-                    Toast.makeText(POSActivity.this, "Paiement accepté!", Toast.LENGTH_SHORT).show();
-
-                    startActivity(OrderSummaryActivity.intent(POSActivity.this, cart.getContent()));
-
-                    cart.clear();
-                    setEnabled(true);
-                    currentPayment = null;
-                    currentMethod = null;
+                    postPaymentAccepted();
                 } else {
-                    setEnabled(true);
-                    cart.resetChangeCounter();
-
-                    Toast.makeText(POSActivity.this, "Paiement refusé. N'hésitez pas à réessayer.", Toast.LENGTH_SHORT).show();
+                    postPaymentRefused();
                 }
             }
 
             @Override
             public void onFailure(NetworkException error) {
-                // TODO : efficient error reporting
-                setEnabled(true);
-                cart.resetChangeCounter();
+                if (!paymentSuccess) {
+                    // C'était un fail de toute façon, ya pas mort d'homme.
+                    postPaymentRefused();
+                } else {
+                    AlertDialog.Builder dialog = new AlertDialog.Builder(POSActivity.this);
+                    dialog.setTitle("Erreur de validation");
+                    dialog.setMessage("Une erreur s'est produite lors de la validation de la commande : " + error.getDescription() + ".\n\n" +
+                            "Vous pouvez réessayer dans quelques instants, ou noter+transmettre les informations suivantes sur un papier et abandonner.\n\n" +
+                           debugString.get()
+                    );
+
+                    dialog.setCancelable(false);
+                    dialog.setPositiveButton("Réessayer", (diag, which) -> confirmPayment(paymentSuccess, logSender, debugString));
+                    dialog.setNegativeButton("Abandonner", (diag, which) -> {
+                        // Second dialog, because it's needed
+                        AlertDialog.Builder secondConfirm = new AlertDialog.Builder(POSActivity.this);
+                        secondConfirm.setTitle("Arrêt de validation");
+                        secondConfirm.setMessage("Assurez vous d'avoir noté et transmises les informations suivantes :\n\n" +
+                                debugString.get() + "\n\n" +
+                                "Cliquez sur Non une fois cela fait."
+                        );
+                        secondConfirm.setPositiveButton("Réessayer", (d, w) -> confirmPayment(paymentSuccess, logSender, debugString));
+                        secondConfirm.setNegativeButton("Non", (d, w) -> postPaymentAccepted());
+
+                        secondConfirm.create().show();
+                    });
+
+                    dialog.create().show();
+                }
             }
         };
 
         logSender.accept(cb);
+    }
+
+    /**
+     * Called once the payment has been accepted by the method AND acked by the server. Can also be called without
+     * server ack if the user bypasses the error.
+     */
+    private void postPaymentAccepted() {
+        Toast.makeText(POSActivity.this, "Paiement accepté!", Toast.LENGTH_SHORT).show();
+
+        startActivity(OrderSummaryActivity.intent(POSActivity.this, cart.getContent()));
+
+        cart.clear();
+        setEnabled(true);
+        currentPayment = null;
+        currentMethod = null;
+    }
+
+    /**
+     * Called once the payment has been refused by the method
+     */
+    private void postPaymentRefused() {
+        setEnabled(true);
+        cart.resetChangeCounter();
+
+        Toast.makeText(POSActivity.this, "Paiement refusé. N'hésitez pas à réessayer.", Toast.LENGTH_SHORT).show();
     }
 
     private class ItemAdapter extends RecyclerView.Adapter<ItemViewHolder> {
