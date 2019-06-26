@@ -2,6 +2,8 @@ package ch.japan_impact.japanimpactpos.views.pos;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -142,8 +144,8 @@ public class Cart {
         this.changed = false;
     }
 
-    class CartedItem {
-        final JIItem item;
+    static class CartedItem implements Parcelable {
+        final @NonNull JIItem item;
         int quantity;
         final MutableLiveData<Integer> watchableQuantity = new MutableLiveData<>();
 
@@ -152,6 +154,23 @@ public class Cart {
             this.quantity = quantity;
             this.watchableQuantity.postValue(quantity);
         }
+
+        protected CartedItem(Parcel in) {
+            item = in.readParcelable(JIItem.class.getClassLoader());
+            quantity = in.readInt();
+        }
+
+        public static final Creator<CartedItem> CREATOR = new Creator<CartedItem>() {
+            @Override
+            public CartedItem createFromParcel(Parcel in) {
+                return new CartedItem(in);
+            }
+
+            @Override
+            public CartedItem[] newArray(int size) {
+                return new CartedItem[size];
+            }
+        };
 
         void add(int howMany) {
             this.quantity += howMany;
@@ -165,6 +184,17 @@ public class Cart {
 
         CheckedOutItem toCheckedOutItem() {
             return new CheckedOutItem(item.getId(), quantity, item.getPrice());
+        }
+
+        @Override
+        public int describeContents() {
+            return 0;
+        }
+
+        @Override
+        public void writeToParcel(Parcel dest, int flags) {
+            dest.writeParcelable(item, flags);
+            dest.writeInt(quantity);
         }
     }
 

@@ -24,4 +24,6 @@
     <string name="accept_cash_payment">Paiement Validé</string>
     <string name="refuse_cash_payment">Abandon Paiement</string>
     <string name="cash_payment_title">Paiement cash : %1$d .-</string>
+    <string name="close">Fermer</string>
+    <string name="order_summary_title">Commande acceptée - Contenu</string>
 </resources>

@@ -128,22 +128,17 @@ public class POSActivity extends AppCompatActivity {
         Consumer<PosOrderResponse> contPayment = data -> {
             backendService.sendPOSLog(data.getOrderId(), PaymentMethod.CASH, false, method + " native android payment start", new BackendService.ApiCallback<ApiResult>() {
                 @Override
-                public void onSuccess(ApiResult u) {
-                    if (u.isSuccess())
-                        callback.accept(data);
-                    else {
-                        Toast.makeText(POSActivity.this, "Oups... Une erreur inconnue (200) s'est produite", Toast.LENGTH_LONG).show();
-                        setEnabled(true);
-                    }
-                }
+                public void onSuccess(ApiResult u) { }
 
                 @Override
                 public void onFailure(NetworkException error) {
                     Toast.makeText(POSActivity.this, "Oups... Une erreur s'est produite: " + error.getDescription(), Toast.LENGTH_LONG).show();
                     error.printStackTrace();
-                    setEnabled(true);
                 }
             });
+
+            // At the same time, continue payment (don't care if start is not logged)
+            callback.accept(data);
         };
 
         if (this.currentPayment != null && !cart.isChanged()) {
@@ -303,9 +298,9 @@ public class POSActivity extends AppCompatActivity {
             @Override
             public void onSuccess(ApiResult data) {
                 if (paymentSuccess) {
-                    // TODO: display cart
+                    Toast.makeText(POSActivity.this, "Paiement accepté!", Toast.LENGTH_SHORT).show();
 
-                    Toast.makeText(POSActivity.this, "Paiement accepté! (soon liste)", Toast.LENGTH_SHORT).show();
+                    startActivity(OrderSummaryActivity.intent(POSActivity.this, cart.getContent()));
 
                     cart.clear();
                     setEnabled(true);
