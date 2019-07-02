@@ -29,6 +29,15 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                <Button android:layout_width="0sp" android:layout_weight="1" android:id="@+id/btn_add_200" android:layout_height="100sp" android:text="200" />
+                <Button android:layout_width="0sp" android:layout_weight="1" android:id="@+id/btn_add_100" android:layout_height="100sp" android:text="100" />
+                <Button android:layout_width="0sp" android:layout_weight="1" android:id="@+id/btn_add_50" android:layout_height="100sp" android:text="50" />
+                <Button android:layout_width="0sp" android:layout_weight="1" android:id="@+id/btn_add_20" android:layout_height="100sp" android:text="20" />
+                <Button android:layout_width="0sp" android:layout_weight="1" android:id="@+id/btn_add_10" android:layout_height="100sp" android:text="10" />
+            </LinearLayout>
+
             <EditText
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -57,12 +66,13 @@
         <Button
                 android:text="@string/accept_cash_payment"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:id="@+id/cash_payment_accept"
-        />
+                android:layout_height="120dp" android:id="@+id/cash_payment_accept"
+                android:layout_marginBottom="10sp"
+                android:background="@android:color/holo_green_dark"/>
         <Button
                 android:text="@string/refuse_cash_payment"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:id="@+id/cash_payment_abort"
-        />
+                android:layout_height="120dp" android:id="@+id/cash_payment_abort"
+                android:background="@android:color/holo_red_dark"/>
     </LinearLayout>
 </LinearLayout>

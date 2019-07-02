@@ -5,7 +5,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.view.WindowManager;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -88,7 +88,33 @@ public class CashPaymentActivity extends AppCompatActivity {
         int width = (int)(getResources().getDisplayMetrics().widthPixels * 0.8);
         int height = (int)(getResources().getDisplayMetrics().heightPixels * 0.5);
 
+        findViewById(R.id.btn_add_200).setOnClickListener(new AddMoneyListener(200, cashGiven));
+        findViewById(R.id.btn_add_100).setOnClickListener(new AddMoneyListener(100, cashGiven));
+        findViewById(R.id.btn_add_50).setOnClickListener(new AddMoneyListener(50, cashGiven));
+        findViewById(R.id.btn_add_20).setOnClickListener(new AddMoneyListener(20, cashGiven));
+        findViewById(R.id.btn_add_10).setOnClickListener(new AddMoneyListener(10, cashGiven));
+
         getWindow().setLayout(width, height);
 
+    }
+
+    static class AddMoneyListener implements View.OnClickListener {
+        private final int howMuch;
+        private final EditText field;
+
+        AddMoneyListener(int howMuch, EditText field) {
+            this.howMuch = howMuch;
+            this.field = field;
+        }
+
+        @Override
+        public void onClick(View v) {
+            int nv = howMuch;
+            try {
+                nv = Integer.parseInt(field.getText().toString()) + howMuch;
+            } catch (NumberFormatException ignored) {}
+
+            field.setText("" + nv);
+        }
     }
 }

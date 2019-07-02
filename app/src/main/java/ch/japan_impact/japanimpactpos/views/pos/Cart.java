@@ -113,6 +113,7 @@ public class Cart {
                 if (c.item.getId() == item.getId()) {
                     boolean delete = c.remove(1);
                     if (delete) {
+                        c.watchableQuantity.removeObservers(activity);
                         iter.remove();
                         adapter.notifyDataSetChanged();
                     }
