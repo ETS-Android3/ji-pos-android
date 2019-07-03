@@ -67,7 +67,7 @@ public class CashPaymentActivity extends AppCompatActivity {
             @Override
             public void afterTextChanged(Editable s) {
                 try {
-                    int changeGiven = Integer.parseInt(s.toString());
+                    int changeGiven = s.toString().isEmpty() ? 0 : Integer.parseInt(s.toString());
                     int diff = changeGiven - price;
 
                     if (diff < 0)
