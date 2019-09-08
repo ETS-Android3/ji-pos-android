@@ -262,26 +262,33 @@ public class POSActivity extends AppCompatActivity {
             } else {
                 SumUpAPI.openPaymentSettingsActivity(this, SUMUP_PREPARE_REQUEST_CODE);
             }
-        } else if (currentPayment != null && requestCode == requestCode() && data != null) {
+        } else if (currentPayment != null && requestCode == requestCode()) {
             if (currentMethod == PaymentMethod.CARD) {
-                int res = data.getExtras().getInt(SumUpAPI.Response.RESULT_CODE);
-                String txCode = data.getExtras().getString(SumUpAPI.Response.TX_CODE);
-                String msg = data.getExtras().getString(SumUpAPI.Response.MESSAGE);
-                boolean receipt = data.getExtras().getBoolean(SumUpAPI.Response.RECEIPT_SENT);
+                if (data != null) {
+                    int res = data.getExtras().getInt(SumUpAPI.Response.RESULT_CODE);
+                    String txCode = data.getExtras().getString(SumUpAPI.Response.TX_CODE);
+                    String msg = data.getExtras().getString(SumUpAPI.Response.MESSAGE);
+                    boolean receipt = data.getExtras().getBoolean(SumUpAPI.Response.RECEIPT_SENT);
 
-                if (res != SumUpAPI.Response.ResultCode.SUCCESSFUL) {
-                    Toast.makeText(POSActivity.this, "Erreur SumUp: " + msg, Toast.LENGTH_LONG).show();
+                    if (res != SumUpAPI.Response.ResultCode.SUCCESSFUL) {
+                        Toast.makeText(POSActivity.this, "Erreur SumUp: " + msg, Toast.LENGTH_LONG).show();
+                    }
+
+                    confirmPayment(res == SumUpAPI.Response.ResultCode.SUCCESSFUL,
+                            c -> backendService.sendPOSLog(currentPayment.getOrderId(), PaymentMethod.CARD, res == SumUpAPI.Response.ResultCode.SUCCESSFUL, msg, txCode, null, receipt, c),
+                            () -> "order=" + currentPayment.getOrderId() + ", method=" + currentMethod + ", txCode=" + txCode + ", receipt=" + receipt);
+                } else {
+                    confirmPayment(false,
+                            c -> backendService.sendPOSLog(currentPayment.getOrderId(), PaymentMethod.CARD, false, "Android Native Card Empty Result", c),
+                            () -> "order=" + currentPayment.getOrderId() + ", method=" + currentMethod + ", activityResult=" + resultCode);
+
                 }
-
-                confirmPayment(res == SumUpAPI.Response.ResultCode.SUCCESSFUL,
-                        c -> backendService.sendPOSLog(currentPayment.getOrderId(), PaymentMethod.CARD, res == SumUpAPI.Response.ResultCode.SUCCESSFUL, msg, txCode, null, receipt, c),
-                        () -> "order=" + currentPayment.getOrderId() + ", method=" + currentMethod + ", txCode=" + txCode + ", receipt=" + receipt);
             } else if (currentMethod == PaymentMethod.CASH) {
-                boolean res = data.getExtras().getBoolean(CashPaymentActivity.IS_SUCCESSFUL_PAYMENT);
+                boolean res = data != null && data.getExtras().getBoolean(CashPaymentActivity.IS_SUCCESSFUL_PAYMENT);
 
                 confirmPayment(res,
                         c -> backendService.sendPOSLog(currentPayment.getOrderId(), PaymentMethod.CASH, res, "Android Native cash transaction " + (res ? "success" : "failure"), c),
-                        () -> "order=" + currentPayment.getOrderId() + ", method=" + currentMethod);
+                        () -> "order=" + currentPayment.getOrderId() + ", method=" + currentMethod + ", activityResult=" + resultCode);
             } else {
                 Toast.makeText(this, "Erreur: confirmation de paiement reçue mais aucune méthode configurée.", Toast.LENGTH_SHORT).show();
             }

@@ -92,6 +92,11 @@ public class CashPaymentActivity extends AppCompatActivity {
 
     }
 
+    @Override
+    public void onBackPressed() {
+        returnToMain(false);
+    }
+
     static class AddMoneyListener implements View.OnClickListener {
         private final int howMuch;
         private final EditText field;
