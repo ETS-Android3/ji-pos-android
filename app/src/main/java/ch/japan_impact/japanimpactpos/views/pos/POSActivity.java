@@ -185,9 +185,7 @@ public class POSActivity extends AppCompatActivity {
             return;
         }
 
-        SumUpPayment payment = SumUpPayment.builder()
-                .total(new BigDecimal(response.getPrice()))
-                .currency(SumUpPayment.Currency.CHF)
+        SumUpPayment payment = SumUpPayment.builder(new BigDecimal(response.getPrice()), SumUpPayment.Currency.CHF)
                 .title("JapanImpact")
                 .build();
 
@@ -377,15 +375,21 @@ public class POSActivity extends AppCompatActivity {
 
     private class ItemAdapter extends RecyclerView.Adapter<ItemViewHolder> {
         private PosItem[][] grid = new PosItem[1][1];
+        private int rows;
+        private int cols;
 
         public void updateGrid(PosItem[] items) {
             PosItem[][] grid;
-            int rows = Arrays.stream(items).map(PosItem::getRow).max(Integer::compare).orElse(0) + 1;
-            int cols = Arrays.stream(items).map(PosItem::getCol).max(Integer::compare).orElse(0) + 1;
+            rows = Arrays.stream(items).map(PosItem::getRow).max(Integer::compare).orElse(0) + 1;
+            cols = Arrays.stream(items).map(PosItem::getCol).max(Integer::compare).orElse(0) + 1;
+
+            Log.i("Items", items.toString());
+            Log.i("Items", "Grid has " + items.length + " items, " +rows+ "r " + cols + "c");
 
             grid = new PosItem[rows][cols];
 
             for (PosItem item : items) {
+                Log.i("Items", "At pos " + item.getRow() + " " + item.getCol() + " " + item);
                 grid[item.getRow()][item.getCol()] = item;
             }
 
@@ -407,8 +411,8 @@ public class POSActivity extends AppCompatActivity {
 
         @Override
         public void onBindViewHolder(@NonNull ItemViewHolder holder, int position) {
-            int row = position / grid.length;
-            int col = position % grid.length;
+            int row = position / cols;
+            int col = position % cols;
 
             if (row >= grid.length || col >= grid[row].length) {
                 Log.w(TAG, "OutOfBounds access! " + row + "/" + col + " (pos " + position + ") with array of size " + grid.length + "x" + grid[0].length);

@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
+import android.view.Window;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -47,9 +48,6 @@ public class CashPaymentActivity extends AppCompatActivity {
         }
 
         TextView change = findViewById(R.id.change_to_return);
-        TextView title = findViewById(R.id.cash_payment_title);
-        title.setText(getString(R.string.cash_payment_title, price));
-
         setTitle(getString(R.string.cash_payment_title, price));
 
         EditText cashGiven = findViewById(R.id.cash_given);
@@ -85,16 +83,12 @@ public class CashPaymentActivity extends AppCompatActivity {
         Button accept = findViewById(R.id.cash_payment_accept);
         accept.setOnClickListener(v -> returnToMain(true));
 
-        int width = (int)(getResources().getDisplayMetrics().widthPixels * 0.8);
-        int height = (int)(getResources().getDisplayMetrics().heightPixels * 0.5);
 
         findViewById(R.id.btn_add_200).setOnClickListener(new AddMoneyListener(200, cashGiven));
         findViewById(R.id.btn_add_100).setOnClickListener(new AddMoneyListener(100, cashGiven));
         findViewById(R.id.btn_add_50).setOnClickListener(new AddMoneyListener(50, cashGiven));
         findViewById(R.id.btn_add_20).setOnClickListener(new AddMoneyListener(20, cashGiven));
         findViewById(R.id.btn_add_10).setOnClickListener(new AddMoneyListener(10, cashGiven));
-
-        getWindow().setLayout(width, height);
 
     }
 

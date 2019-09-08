@@ -20,7 +20,6 @@
     <string name="setup_sumup">Paramétrage boitier</string>
     <string name="login">Connexion</string>
     <string name="given_money">Argent reçu</string>
-    <string name="change_help_title">Aide au retour de monnaie</string>
     <string name="accept_cash_payment">Paiement Validé</string>
     <string name="refuse_cash_payment">Abandon Paiement</string>
     <string name="cash_payment_title">Paiement cash : %1$d .-</string>

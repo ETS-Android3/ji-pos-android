@@ -1,12 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!--
     <string name="api_url">https://shop.japan-impact.ch/api</string>
     <string name="auth_client_id">8pdszcUWxht75pmttKnyAxxHzc9HarutYvScP6uHq5WsDXJqGfQcWeCRHGZgHwtGE9dQvKgu</string>
-    -->
-    <string name="api_url">http://192.168.0.45:10000</string>
-    <string name="auth_client_id">3lHGENIo0Kn0s1ynR2Q508E3ae000PLkIcgrNtKsUGs</string>
-
     <string name="auth_api_url">https://auth.japan-impact.ch</string>
     <string name="sumup_affiliate_key">d9fe4d55-086a-402c-a1f1-57991345f03e</string>
 </resources>

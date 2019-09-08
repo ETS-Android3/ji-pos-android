@@ -40,6 +40,17 @@ public class PosItem {
     public String getFontColor() {
         return fontColor;
     }
+
+    @Override
+    public String toString() {
+        return "PosItem{" +
+                "item=" + item +
+                ", row=" + row +
+                ", col=" + col +
+                ", color='" + color + '\'' +
+                ", fontColor='" + fontColor + '\'' +
+                '}';
+    }
 }
 
 

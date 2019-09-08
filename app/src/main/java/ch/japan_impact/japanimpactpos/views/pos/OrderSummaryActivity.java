@@ -56,10 +56,6 @@ public class OrderSummaryActivity extends AppCompatActivity {
             layout.addView(row);
         });
 
-        int width = (int) (getResources().getDisplayMetrics().widthPixels * 0.8);
-        int height = (int) (getResources().getDisplayMetrics().heightPixels * 0.5);
-
-        getWindow().setLayout(width, height);
     }
 
     public static Intent intent(Context ctx, List<Cart.CartedItem> content) {
