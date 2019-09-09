@@ -48,6 +48,7 @@ public final class ScanActivity extends AppCompatActivity {
     private static final String TAG = "TicketingScanActivity";
     private static final int MY_PERMISSIONS_REQUEST_CAMERA = 42; // Magic value
     private static final int OVERLAY_DELAY = 2000;
+    private static final int SCAN_PAUSE_DELAY = 1500; // time for the camera to relaunch
 
     private TextView view;
     private DecoratedBarcodeView scanner;
@@ -71,7 +72,7 @@ public final class ScanActivity extends AppCompatActivity {
                     soundAlertManager.success();
                     setScanResult(buildHtml(data), true);
                     scanner.setStatusText("");
-                    resumeScan();
+                    scanner.postDelayed(ScanActivity.this::resumeScan, SCAN_PAUSE_DELAY);
                 }
 
                 @Override
@@ -86,14 +87,14 @@ public final class ScanActivity extends AppCompatActivity {
                         setScanResult(buildHtmlForError((ApiException) error), false);
 
                         scanner.setStatusText("");
-                        resumeScan();
+                        scanner.postDelayed(ScanActivity.this::resumeScan, OVERLAY_DELAY);
                     } else {
                         soundAlertManager.failure();
 
                         setScanResult(Html.fromHtml("<b style='color: red;'>Erreur inconnue au scan, merci de rééssayer.</b>"), false);
 
                         scanner.setStatusText("");
-                        resumeScan();
+                        scanner.postDelayed(ScanActivity.this::resumeScan, OVERLAY_DELAY);
                     }
                 }
             });
@@ -124,7 +125,9 @@ public final class ScanActivity extends AppCompatActivity {
         view.setTextColor(color);
         overlay.setBackgroundColor(color);
         overlay.setVisibility(View.VISIBLE);
-        overlay.postDelayed(() -> overlay.setVisibility(View.INVISIBLE), OVERLAY_DELAY);
+        overlay.setAlpha(.2F);
+        overlay.postDelayed(() -> overlay.animate().alpha(0F).setDuration(200), OVERLAY_DELAY);
+
     }
 
     private void appendSuccessData(ScanResult data, StringBuilder html) {
