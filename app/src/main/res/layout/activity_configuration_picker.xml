@@ -9,73 +9,100 @@
         android:id="@+id/refresh_layout"
         android:layout_marginLeft="15dp"
         android:layout_marginRight="15dp">
-    <ScrollView
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="85"
-            android:id="@+id/configuration_list">
+
+    <LinearLayout
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                android:text="@string/pick_configuration"
+                android:textStyle="bold" android:gravity="center_horizontal" android:textSize="18sp"/>
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                android:textStyle="bold" android:gravity="center_horizontal" android:textSize="18sp"
+                android:id="@+id/error_message"
+                android:visibility="gone"/>
+
+        <androidx.viewpager.widget.ViewPager
+                android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="85"
+                android:id="@+id/view_pager">
 
 
-        <LinearLayout
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:orientation="vertical">
+            <com.google.android.material.tabs.TabLayout
+                    android:id="@+id/tab_layout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
 
+            <ScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:id="@+id/pos_scroller">
+
+
+                <androidx.recyclerview.widget.RecyclerView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" android:id="@+id/configuration_list"
+                        android:layout_margin="8dp"/>
+
+
+            </ScrollView>
+
+            <ScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:id="@+id/scan_scroller">
+
+
+                <androidx.recyclerview.widget.RecyclerView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" android:id="@+id/scan_list"
+                        android:layout_margin="8dp"/>
+
+
+            </ScrollView>
+
+        </androidx.viewpager.widget.ViewPager>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                      android:orientation="horizontal">
             <TextView
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    android:text="@string/pick_configuration"
-                    android:textStyle="bold" android:gravity="center_horizontal" android:textSize="18sp"/>
+                    android:layout_weight="1"
+                    android:text="@string/logged_in_to_ji"/>
 
-            <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    android:textStyle="bold" android:gravity="center_horizontal" android:textSize="18sp"
-                    android:id="@+id/error_message"
-                    android:visibility="gone"/>
-
-            <androidx.recyclerview.widget.RecyclerView
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent" android:id="@+id/recycler"
-                    android:layout_margin="8dp"/>
-
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                          android:orientation="horizontal">
-                <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/logged_in_to_ji"/>
-
-                <Button android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                        android:text="@string/logout" android:id="@+id/ji_logout"/>
+            <Button android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                    android:text="@string/logout" android:id="@+id/ji_logout"/>
 
 
-            </LinearLayout>
-
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                          android:orientation="horizontal">
-                <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="2"
-                        android:id="@+id/sumup_status"
-                />
-
-                <Button android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                        android:text="@string/logout" android:id="@+id/sumup_logout"/>
-                <Button android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                        android:text="@string/setup_sumup" android:id="@+id/sumup_setup"/>
-
-
-            </LinearLayout>
         </LinearLayout>
-    </ScrollView>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                      android:orientation="horizontal">
+            <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="2"
+                    android:id="@+id/sumup_status"
+            />
+
+            <Button android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                    android:text="@string/logout" android:id="@+id/sumup_logout"/>
+            <Button android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                    android:text="@string/setup_sumup" android:id="@+id/sumup_setup"/>
+
+        </LinearLayout>
+    </LinearLayout>
 </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>

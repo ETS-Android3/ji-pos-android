@@ -25,4 +25,9 @@
     <string name="cash_payment_title">Paiement cash : %1$d .-</string>
     <string name="close">Fermer</string>
     <string name="order_summary_title">Commande acceptée - Contenu</string>
+
+    <string name="ticketing_scan_success">Billet accepté !</string>
+    <string name="ticketing_scan_failure">Billet refusé :(</string>
+    <string name="ticketing_scan_user">Acheteur : </string>
+    <string name="ticketing_scan_bought_product">Détails du billet :</string>
 </resources>

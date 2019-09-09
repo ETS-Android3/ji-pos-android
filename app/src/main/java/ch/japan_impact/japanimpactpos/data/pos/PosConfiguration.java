@@ -1,46 +1,20 @@
 package ch.japan_impact.japanimpactpos.data.pos;
 
+import ch.japan_impact.japanimpactpos.data.AbstractConfiguration;
+
 /**
  * @author Louis Vialar
  */
-public class PosConfiguration {
-    private int id;
-    private int eventId;
-    private String name;
+public class PosConfiguration extends AbstractConfiguration {
     private boolean acceptCards;
 
     public PosConfiguration() {
+        super();
     }
 
     public PosConfiguration(int id, int eventId, String name, boolean acceptCards) {
-        this.id = id;
-        this.eventId = eventId;
-        this.name = name;
+        super(id, eventId, name);
         this.acceptCards = acceptCards;
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public int getEventId() {
-        return eventId;
-    }
-
-    public void setEventId(int eventId) {
-        this.eventId = eventId;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
     }
 
     public boolean isAcceptCards() {
@@ -49,5 +23,10 @@ public class PosConfiguration {
 
     public void setAcceptCards(boolean acceptCards) {
         this.acceptCards = acceptCards;
+    }
+
+    @Override
+    public AbstractConfiguration updateName(String name) {
+        return new PosConfiguration(this.id, this.eventId, name, this.acceptCards);
     }
 }

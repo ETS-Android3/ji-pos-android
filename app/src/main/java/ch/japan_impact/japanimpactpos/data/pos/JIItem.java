@@ -10,13 +10,7 @@ public class JIItem implements Parcelable {
     private int id;
     private String name;
     private int price;
-    // Skipped: description, longDescription, maxItems, eventId, isTicket, freePrice, isVisible
-
-    public JIItem(int id, String name, int price) {
-        this.id = id;
-        this.name = name;
-        this.price = price;
-    }
+    private String description;
 
     public JIItem() {
     }
@@ -25,6 +19,7 @@ public class JIItem implements Parcelable {
         id = in.readInt();
         name = in.readString();
         price = in.readInt();
+        description = in.readString();
     }
 
     public static final Creator<JIItem> CREATOR = new Creator<JIItem>() {
@@ -51,6 +46,10 @@ public class JIItem implements Parcelable {
         return price;
     }
 
+    public String getDescription() {
+        return description;
+    }
+
     @Override
     public int describeContents() {
         return 0;
@@ -61,5 +60,6 @@ public class JIItem implements Parcelable {
         dest.writeInt(id);
         dest.writeString(name);
         dest.writeInt(price);
+        dest.writeString(description);
     }
 }

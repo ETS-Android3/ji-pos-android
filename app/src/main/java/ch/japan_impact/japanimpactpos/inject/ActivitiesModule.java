@@ -5,6 +5,7 @@ import ch.japan_impact.japanimpactpos.views.LoginActivity;
 import ch.japan_impact.japanimpactpos.views.pos.CashPaymentActivity;
 import ch.japan_impact.japanimpactpos.views.pos.OrderSummaryActivity;
 import ch.japan_impact.japanimpactpos.views.pos.POSActivity;
+import ch.japan_impact.japanimpactpos.views.scan.ScanActivity;
 import dagger.Module;
 import dagger.android.AndroidInjectionModule;
 import dagger.android.ContributesAndroidInjector;
@@ -26,4 +27,6 @@ abstract class ActivitiesModule {
     abstract CashPaymentActivity cashPaymentActivity();
     @ContributesAndroidInjector
     abstract OrderSummaryActivity orderSummaryActivity();
+    @ContributesAndroidInjector
+    abstract ScanActivity scanActivity();
 }

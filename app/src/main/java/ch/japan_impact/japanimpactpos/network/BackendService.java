@@ -10,6 +10,8 @@ import ch.japan_impact.japanimpactpos.data.pos.CheckedOutItem;
 import ch.japan_impact.japanimpactpos.data.pos.PosConfigResponse;
 import ch.japan_impact.japanimpactpos.data.pos.PosConfigurationList;
 import ch.japan_impact.japanimpactpos.data.pos.PosOrderResponse;
+import ch.japan_impact.japanimpactpos.data.scan.ScanConfigurationList;
+import ch.japan_impact.japanimpactpos.data.scan.ScanResult;
 import ch.japan_impact.japanimpactpos.network.exceptions.*;
 import com.android.volley.*;
 import com.android.volley.toolbox.HttpHeaderParser;
@@ -145,10 +147,27 @@ public class BackendService {
         queue.add(req);
     }
 
-    public void getConfigs(ApiCallback<List<PosConfigurationList>> callback) {
+    public void getPosConfigs(ApiCallback<List<PosConfigurationList>> callback) {
         TypeToken<List<PosConfigurationList>> tt = new TypeToken<List<PosConfigurationList>>() {
         };
         sendAuthenticatedRequest(tt.getType(), Request.Method.GET, API_URL + "/pos/configurations", callback);
+    }
+
+    public void getScanConfigs(ApiCallback<List<ScanConfigurationList>> callback) {
+        TypeToken<List<ScanConfigurationList>> tt = new TypeToken<List<ScanConfigurationList>>() {
+        };
+        sendAuthenticatedRequest(tt.getType(), Request.Method.GET, API_URL + "/scan/configurations", callback);
+    }
+
+    public void scan(int configId, String barcode, ApiCallback<ScanResult> callback) {
+        JSONObject o = new JSONObject();
+        try {
+            o.put("barcode", barcode);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        sendAuthenticatedRequest(ScanResult.class, Request.Method.POST, API_URL + "/scan/process/" + configId, o.toString(), callback);
     }
 
     public void getConfig(int eventId, int id, ApiCallback<PosConfigResponse> callback) {

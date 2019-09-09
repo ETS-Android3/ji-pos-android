@@ -41,7 +41,6 @@ import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -49,8 +48,6 @@ public class POSActivity extends AppCompatActivity {
     private static final int SUMUP_LOGIN_REQUEST_CODE = 1;
     private static final int SUMUP_PREPARE_REQUEST_CODE = 2;
     private static final String TAG = "POSActivity";
-    public static final String POS_CONFIG_ID = "POS_CONFIG_ID";
-    public static final String POS_EVENT_ID = "POS_EVENT_ID";
 
     private int configId;
     private int eventId;
@@ -84,8 +81,8 @@ public class POSActivity extends AppCompatActivity {
         setContentView(R.layout.activity_pos);
 
         Intent intent = getIntent();
-        this.configId = intent.getIntExtra(POS_CONFIG_ID, -1);
-        this.eventId = intent.getIntExtra(POS_EVENT_ID, -1);
+        this.configId = intent.getIntExtra(ConfigurationPickerActivity.CONFIG_ID, -1);
+        this.eventId = intent.getIntExtra(ConfigurationPickerActivity.EVENT_ID, -1);
 
         if (configId <= 0 || eventId <= 0) {
             Toast.makeText(this, "Numéro de configuration invalide", Toast.LENGTH_LONG).show();

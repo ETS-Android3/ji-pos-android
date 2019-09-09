@@ -1,5 +1,6 @@
 package ch.japan_impact.japanimpactpos.network.exceptions;
 
+import android.util.Log;
 import com.android.volley.NetworkResponse;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.HttpHeaderParser;
@@ -22,11 +23,20 @@ public class ApiException extends VolleyException {
     public ApiException(VolleyError error) throws UnsupportedEncodingException, JSONException {
         super(error);
 
+        Log.i("ApiException", "Build exception from " + error.networkResponse + " (len " + (error.networkResponse == null ? 0 : error.networkResponse.data.length));
+
         // Fill the data:
         if (error.networkResponse != null && error.networkResponse.data.length > 0) {
             NetworkResponse r = error.networkResponse;
             String jsonString = new String(r.data, HttpHeaderParser.parseCharset(r.headers, "utf-8"));
+
+            Log.i("ApiException", "Json " + jsonString);
+
             JSONObject object = new JSONObject(jsonString);
+
+            if (object.has("success") && object.has("errors") && object.getJSONArray("errors").length() > 0) {
+                object = object.getJSONArray("errors").getJSONObject(0);
+            }
 
             this.key = object.optString("key", null);
 
@@ -41,10 +51,12 @@ public class ApiException extends VolleyException {
                 for (int i = 0; i < arr.length(); ++i)
                     args.add(arr.getJSONObject(i));
             }
+
         } else {
             throw new NullPointerException();
         }
     }
+
 
     @Override
     public String getDescription() {

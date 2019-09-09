@@ -17,13 +17,18 @@ import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import androidx.viewpager.widget.PagerAdapter;
+import androidx.viewpager.widget.ViewPager;
 import ch.japan_impact.japanimpactpos.R;
-import ch.japan_impact.japanimpactpos.data.pos.PosConfiguration;
-import ch.japan_impact.japanimpactpos.data.pos.PosConfigurationList;
+import ch.japan_impact.japanimpactpos.data.AbstractConfiguration;
+import ch.japan_impact.japanimpactpos.data.AbstractConfigurationList;
+import ch.japan_impact.japanimpactpos.data.scan.ScanConfiguration;
 import ch.japan_impact.japanimpactpos.network.BackendService;
 import ch.japan_impact.japanimpactpos.network.exceptions.LoginRequiredException;
 import ch.japan_impact.japanimpactpos.network.exceptions.NetworkException;
 import ch.japan_impact.japanimpactpos.views.pos.POSActivity;
+import ch.japan_impact.japanimpactpos.views.scan.ScanActivity;
+import com.google.android.material.tabs.TabLayout;
 import com.sumup.merchant.api.SumUpAPI;
 import com.sumup.merchant.api.SumUpLogin;
 import dagger.android.AndroidInjection;
@@ -34,6 +39,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class ConfigurationPickerActivity extends AppCompatActivity {
+    public static final String CONFIG_ID = "CONFIG_ID";
+    public static final String CONFIG_NAME = "CONFIG_NAME";
+    public static final String EVENT_ID = "EVENT_ID";
     private static final String TAG = "ConfigurationPickerActivity";
 
     private TextView mErrorView;
@@ -42,7 +50,8 @@ public class ConfigurationPickerActivity extends AppCompatActivity {
     private Button mSumUpSetup;
     private Button mJiLogout;
     private SwipeRefreshLayout mRefreshLayout;
-    private ConfigurationAdapter adapter;
+    private ConfigurationAdapter posAdapter;
+    private ConfigurationAdapter scanAdapter;
 
     @Inject
     BackendService backend;
@@ -64,6 +73,7 @@ public class ConfigurationPickerActivity extends AppCompatActivity {
                 SumUpAPI.openLoginActivity(this, SumUpLogin.builder(getString(R.string.sumup_affiliate_key)).build(), 1);
             }
         });
+
         this.mSumUpSetup = findViewById(R.id.sumup_setup);
         this.mSumUpSetup.setOnClickListener(v -> SumUpAPI.openPaymentSettingsActivity(this, 1));
         this.mJiLogout = findViewById(R.id.ji_logout);
@@ -71,11 +81,56 @@ public class ConfigurationPickerActivity extends AppCompatActivity {
             backend.getStorage().logout();
             startActivity(new Intent(this, LoginActivity.class));
         });
-
-        RecyclerView recycler = findViewById(R.id.recycler);
         this.mRefreshLayout = findViewById(R.id.refresh_layout);
 
+        this.posAdapter = new ConfigurationAdapter();
+        this.scanAdapter = new ConfigurationAdapter();
+        setUpRecycler(R.id.configuration_list, this.posAdapter);
+        setUpRecycler(R.id.scan_list, this.scanAdapter);
+
+        ViewPager pager = findViewById(R.id.view_pager);
+        pager.setAdapter(new ViewPagerAdapter());
+
+        TabLayout layout = findViewById(R.id.tab_layout);
+        layout.setupWithViewPager(pager);
+
+        mRefreshLayout.setOnRefreshListener(this::refresh);
+    }
+
+    public class ViewPagerAdapter extends PagerAdapter {
+        @NonNull
+        @Override
+        public Object instantiateItem(@NonNull ViewGroup container, int position) {
+            View v = findViewById(position == 0 ? R.id.pos_scroller : R.id.scan_scroller);
+            container.addView(v);
+            return v;
+        }
+
+        @Override
+        public void destroyItem(ViewGroup collection, int position, Object view) {
+            collection.removeView((View) view);
+        }
+
+        @Override
+        public boolean isViewFromObject(@NonNull View view, @NonNull Object object) {
+            return view == object;
+        }
+
+        @Override
+        public int getCount() {
+            return 2;
+        }
+
+        @Override
+        public CharSequence getPageTitle(int position) {
+            return position == 0 ? "Point de vente" : "Scan";
+        }
+    }
+
+    private void setUpRecycler(int resId, ConfigurationAdapter adapter) {
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
+
+        RecyclerView recycler = findViewById(resId);
         recycler.setLayoutManager(layoutManager);
 
         // Set up items borders
@@ -84,11 +139,7 @@ public class ConfigurationPickerActivity extends AppCompatActivity {
                 layoutManager.getOrientation()
         );
         recycler.addItemDecoration(dividerItemDecoration);
-
-        this.adapter = new ConfigurationAdapter();
         recycler.setAdapter(adapter);
-
-        mRefreshLayout.setOnRefreshListener(this::refresh);
     }
 
     @Override
@@ -108,15 +159,19 @@ public class ConfigurationPickerActivity extends AppCompatActivity {
         this.mRefreshLayout.setRefreshing(true);
         this.sumUpRefresh();
 
-        backend.getConfigs(new BackendService.ApiCallback<List<PosConfigurationList>>() {
+        backend.getPosConfigs(createCallbackForAdapter(posAdapter));
+        backend.getScanConfigs(createCallbackForAdapter(scanAdapter));
+    }
+
+    private <U extends AbstractConfigurationList<?>> BackendService.ApiCallback<List<U>> createCallbackForAdapter(ConfigurationAdapter adapter) {
+        return new BackendService.ApiCallback<List<U>>() {
             @Override
-            public void onSuccess(List<PosConfigurationList> data) {
-                Log.i(TAG, "Result from backend " + data.toString());
+            public void onSuccess(List<U> data) {
                 adapter.setConfigurations(
                         data.stream()
-                                .flatMap(configList -> configList.getConfigs()
-                                        .stream()
-                                        .map(config -> new PosConfiguration(config.getId(), config.getEventId(), configList.getEvent().getName() + " - " + config.getName(), config.isAcceptCards())))
+                                .flatMap(configList ->
+                                        configList.getConfigs().stream()
+                                                .map(config -> config.updateName(configList.getEvent().getName() + " - " + config.getName())))
                                 .collect(Collectors.toList())
                 );
 
@@ -138,7 +193,7 @@ public class ConfigurationPickerActivity extends AppCompatActivity {
                     mErrorView.setVisibility(View.VISIBLE);
                 }
             }
-        });
+        };
     }
 
     @Override
@@ -148,7 +203,7 @@ public class ConfigurationPickerActivity extends AppCompatActivity {
     }
 
     private class ConfigurationAdapter extends RecyclerView.Adapter<ConfigurationViewHolder> {
-        private List<PosConfiguration> configurations = Collections.emptyList();
+        private List<AbstractConfiguration> configurations = Collections.emptyList();
 
         @NonNull
         @Override
@@ -176,14 +231,14 @@ public class ConfigurationPickerActivity extends AppCompatActivity {
             return configurations.size();
         }
 
-        public void setConfigurations(List<PosConfiguration> configurations) {
+        public void setConfigurations(List<AbstractConfiguration> configurations) {
             this.configurations = configurations;
             this.notifyDataSetChanged();
         }
     }
 
     private class ConfigurationViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
-        private PosConfiguration configuration;
+        private AbstractConfiguration configuration;
         private TextView configName;
 
         public ConfigurationViewHolder(View item) {
@@ -193,16 +248,23 @@ public class ConfigurationPickerActivity extends AppCompatActivity {
             item.setOnClickListener(this);
         }
 
-        public void setConfiguration(PosConfiguration configuration) {
+        public void setConfiguration(AbstractConfiguration configuration) {
             this.configuration = configuration;
             this.configName.setText(configuration.getName());
         }
 
         @Override
         public void onClick(View v) {
-            Intent openIntent = new Intent(ConfigurationPickerActivity.this, POSActivity.class);
-            openIntent.putExtra(POSActivity.POS_CONFIG_ID, configuration.getId());
-            openIntent.putExtra(POSActivity.POS_EVENT_ID, configuration.getEventId());
+            Intent openIntent;
+
+            if (configuration instanceof ScanConfiguration) {
+                openIntent = new Intent(ConfigurationPickerActivity.this, ScanActivity.class);
+
+            } else {
+                openIntent = new Intent(ConfigurationPickerActivity.this, POSActivity.class);
+            }
+            openIntent.putExtra(CONFIG_ID, configuration.getId());
+            openIntent.putExtra(EVENT_ID, configuration.getEventId());
             Toast.makeText(ConfigurationPickerActivity.this, "Ouverture de " + configuration.getName(), Toast.LENGTH_SHORT).show();
 
             startActivity(openIntent);
