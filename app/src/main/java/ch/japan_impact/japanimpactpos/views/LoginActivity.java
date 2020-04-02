@@ -4,6 +4,7 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -25,14 +26,11 @@ import java.util.function.Function;
  * A login screen that offers login via email/password.
  */
 public class LoginActivity extends AppCompatActivity {
-    // UI references.
-    private EditText mEmailView;
-    private EditText mPasswordView;
-    private View mProgressView;
-    private View mLoginFormView;
-
     @Inject
     BackendService service;
+    // UI references.
+    private View mProgressView;
+    private View mLoginFormView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,23 +38,35 @@ public class LoginActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        // Set up the login form.
-        mEmailView = findViewById(R.id.email);
 
-        mPasswordView = findViewById(R.id.password);
-        mPasswordView.setOnEditorActionListener((textView, id, keyEvent) -> {
-            if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
-                attemptLogin();
-                return true;
-            }
-            return false;
+        String CLIENT_ID = getResources().getString(R.string.auth_client_id);
+        String API_URL = getResources().getString(R.string.auth_api_url);
+
+
+        Button mEmailSignInButton = findViewById(R.id.login_button);
+        mEmailSignInButton.setOnClickListener(view -> {
+            Intent i = new Intent(Intent.ACTION_VIEW)
+                    .setData(Uri.parse(API_URL + "/login?app=" + CLIENT_ID + "&tokenType=token"));
+            startActivity(i);
         });
-
-        Button mEmailSignInButton = findViewById(R.id.email_sign_in_button);
-        mEmailSignInButton.setOnClickListener(view -> attemptLogin());
 
         mLoginFormView = findViewById(R.id.login_form);
         mProgressView = findViewById(R.id.login_progress);
+
+        // Check if the login data is here
+        Intent intent = getIntent();
+        String action = intent.getAction();
+        if (action != null && action.equals(Intent.ACTION_VIEW)) {
+            Uri data = intent.getData();
+
+            if (data != null && data.getPath() != null && data.getPath().equals("/login")) {
+                String accessToken = data.getQueryParameter("accessToken");
+
+                this.attemptLogin(accessToken);
+            } else {
+                Toast.makeText(this, "Invalid callback, please try again.", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     @Override
@@ -89,52 +99,28 @@ public class LoginActivity extends AppCompatActivity {
      * If there are form errors (invalid email, missing fields, etc.), the
      * errors are presented and no actual login attempt is made.
      */
-    private void attemptLogin() {
-        // Reset errors.
-        mEmailView.setError(null);
-        mPasswordView.setError(null);
+    private void attemptLogin(String accessToken) {
+        showProgress(true);
 
+        try {
+            service.login(accessToken, errors -> {
+                if (errors.isPresent()) {
+                    Toast.makeText(this, "Erreur de connexion : " + errors.get(), Toast.LENGTH_LONG).show();
+                    showProgress(false);
+                } else {
+                    Toast.makeText(this, "Login success!", Toast.LENGTH_LONG).show();
 
-        boolean cancel = checkFieldInvalid(mEmailView, this::isEmailValid) || checkFieldInvalid(mPasswordView, this::isPasswordValid);
+                    Intent openIntent = new Intent(this, ConfigurationPickerActivity.class);
+                    startActivity(openIntent);
 
-
-        if (!cancel) {
-            // Store values at the time of the login attempt.
-            String email = mEmailView.getText().toString();
-            String password = mPasswordView.getText().toString();
-
-            // Show a progress spinner, and kick off a background task to
-            // perform the user login attempt.
-            showProgress(true);
-
-            try {
-                service.login(email, password, errors -> {
-                    if (errors.isPresent()) {
-                        Toast.makeText(this, "Erreur de connexion : " + errors.get(), Toast.LENGTH_LONG).show();
-                        showProgress(false);
-                    } else {
-                        Toast.makeText(this, "Login success!", Toast.LENGTH_LONG).show();
-
-                        Intent openIntent = new Intent(this, ConfigurationPickerActivity.class);
-                        startActivity(openIntent);
-
-                        finish();
-                    }
-                });
-            } catch (JSONException e) {
-                Toast.makeText(this, "Erreur de connexion : " + e.getMessage(), Toast.LENGTH_LONG).show();
-                e.printStackTrace();
-                showProgress(false);
-            }
+                    finish();
+                }
+            });
+        } catch (JSONException e) {
+            Toast.makeText(this, "Erreur de connexion : " + e.getMessage(), Toast.LENGTH_LONG).show();
+            e.printStackTrace();
+            showProgress(false);
         }
-    }
-
-    private boolean isEmailValid(String email) {
-        return email.contains("@");
-    }
-
-    private boolean isPasswordValid(String password) {
-        return password.length() > 4;
     }
 
     /**

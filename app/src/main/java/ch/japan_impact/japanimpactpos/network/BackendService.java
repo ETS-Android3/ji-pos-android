@@ -41,13 +41,11 @@ public class BackendService {
 
     private final RequestQueue queue;
     private final Context ctx;
-    private final AuthService service;
     private final TokenStorage storage;
 
     @Inject
-    public BackendService(Context ctx, AuthService service) {
+    public BackendService(Context ctx) {
         this.queue = Volley.newRequestQueue(ctx.getApplicationContext());
-        this.service = service;
         this.ctx = ctx;
         this.API_URL = ctx.getResources().getString(R.string.api_url);
         this.storage = new TokenStorage(ctx.getSharedPreferences(PREFERENCE_KEY, Context.MODE_PRIVATE));
@@ -57,64 +55,61 @@ public class BackendService {
         return storage;
     }
 
-    public void login(String email, String password, Consumer<Optional<String>> callback) throws JSONException {
-        this.service.login(email, password, token -> {
-            Log.i(TAG, "Got ticket " + token);
+    public void login(String accessToken, Consumer<Optional<String>> callback) throws JSONException {
 
-            JsonRequest<JSONObject> request = new JsonRequest<JSONObject>(
-                    Request.Method.POST,
-                    API_URL + "/users/login",
-                    token,
-                    response -> {
-                        if (response.has("idToken") && response.has("refreshToken")) {
-                            try {
-                                storage.setTokens(response.getString("refreshToken"), response.getString("idToken"));
-                                callback.accept(Optional.empty());
-                            } catch (JSONException e) {
-                                e.printStackTrace();
-                                callback.accept(Optional.of(AuthService.ErrorCodes.UNKNOWN_ERROR.message));
-                            }
-                        } else callback.accept(Optional.of(AuthService.ErrorCodes.UNKNOWN_ERROR.message));
-                    },
-                    error -> {
-                        if (error instanceof NetworkError) {
-                            callback.accept(Optional.of(AuthService.ErrorCodes.NETWORK_ERROR.message));
-                        } else if (error instanceof ServerError) {
-                            //Indicates that the server responded with a error response
-                            try {
-                                String json = new String(error.networkResponse.data, HttpHeaderParser.parseCharset(error.networkResponse.headers, "utf-8"));
-                                Log.e(TAG, json);
-                            } catch (UnsupportedEncodingException e) {
-                                Log.e(TAG, "Encoding error", e);
-                            }
-                            callback.accept(Optional.of(AuthService.ErrorCodes.UNKNOWN_ERROR.message));
-                        } else {
-                            Log.e(TAG, "VolleyError. " + error.toString() + " -- " + error.networkResponse, error.getCause());
-                            callback.accept(Optional.of(AuthService.ErrorCodes.UNKNOWN_ERROR.message));
+        JsonRequest<JSONObject> request = new JsonRequest<JSONObject>(
+                Request.Method.POST,
+                API_URL + "/users/login",
+                accessToken,
+                response -> {
+                    if (response.has("idToken") && response.has("refreshToken")) {
+                        try {
+                            storage.setTokens(response.getString("refreshToken"), response.getString("idToken"));
+                            callback.accept(Optional.empty());
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                            callback.accept(Optional.of(ErrorCodes.UNKNOWN_ERROR.message));
                         }
-                    }) {
-                @Override
-                protected Response<JSONObject> parseNetworkResponse(NetworkResponse response) {
-                    try {
-                        String jsonString =
-                                new String(
-                                        response.data,
-                                        HttpHeaderParser.parseCharset(response.headers, PROTOCOL_CHARSET));
-                        return Response.success(
-                                new JSONObject(jsonString), HttpHeaderParser.parseCacheHeaders(response));
-                    } catch (UnsupportedEncodingException | JSONException e) {
-                        return Response.error(new ParseError(e));
+                    } else callback.accept(Optional.of(ErrorCodes.UNKNOWN_ERROR.message));
+                },
+                error -> {
+                    if (error instanceof NetworkError) {
+                        callback.accept(Optional.of(ErrorCodes.NETWORK_ERROR.message));
+                    } else if (error instanceof ServerError) {
+                        //Indicates that the server responded with a error response
+                        try {
+                            String json = new String(error.networkResponse.data, HttpHeaderParser.parseCharset(error.networkResponse.headers, "utf-8"));
+                            Log.e(TAG, json);
+                        } catch (UnsupportedEncodingException e) {
+                            Log.e(TAG, "Encoding error", e);
+                        }
+                        callback.accept(Optional.of(ErrorCodes.UNKNOWN_ERROR.message));
+                    } else {
+                        Log.e(TAG, "VolleyError. " + error.toString() + " -- " + error.networkResponse, error.getCause());
+                        callback.accept(Optional.of(ErrorCodes.UNKNOWN_ERROR.message));
                     }
+                }) {
+            @Override
+            protected Response<JSONObject> parseNetworkResponse(NetworkResponse response) {
+                try {
+                    String jsonString =
+                            new String(
+                                    response.data,
+                                    HttpHeaderParser.parseCharset(response.headers, PROTOCOL_CHARSET));
+                    return Response.success(
+                            new JSONObject(jsonString), HttpHeaderParser.parseCacheHeaders(response));
+                } catch (UnsupportedEncodingException | JSONException e) {
+                    return Response.error(new ParseError(e));
                 }
+            }
 
-                @Override
-                public String getBodyContentType() {
-                    return "text/plain";
-                }
-            };
-            Log.i(TAG, "Sending " + new String(request.getBody()));
-            queue.add(request);
-        }, error -> callback.accept(Optional.of(error.message)));
+            @Override
+            public String getBodyContentType() {
+                return "text/plain";
+            }
+        };
+        Log.i(TAG, "Sending " + new String(request.getBody()));
+        queue.add(request);
     }
 
     private void refreshIdToken(ApiCallback<Void> callback) {
