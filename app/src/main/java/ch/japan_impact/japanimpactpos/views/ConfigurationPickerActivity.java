@@ -80,7 +80,6 @@ public class ConfigurationPickerActivity extends AppCompatActivity {
         this.mJiLogout = findViewById(R.id.ji_logout);
 
 
-        String CLIENT_ID = getResources().getString(R.string.auth_client_id);
         String API_URL = getResources().getString(R.string.auth_api_url);
 
 
@@ -88,7 +87,7 @@ public class ConfigurationPickerActivity extends AppCompatActivity {
             backend.getStorage().logout();
 
             Intent i = new Intent(Intent.ACTION_VIEW)
-                    .setData(Uri.parse(API_URL + "/logout?app=" + CLIENT_ID + "&tokenType=token"));
+                    .setData(Uri.parse(API_URL + "/logout?redirect=jipos://login.pos.ji.ch/"));
             startActivity(i);
         });
         this.mRefreshLayout = findViewById(R.id.refresh_layout);

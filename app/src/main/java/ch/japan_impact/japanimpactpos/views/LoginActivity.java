@@ -39,14 +39,12 @@ public class LoginActivity extends AppCompatActivity {
         setContentView(R.layout.activity_login);
 
 
-        String CLIENT_ID = getResources().getString(R.string.auth_client_id);
         String API_URL = getResources().getString(R.string.auth_api_url);
-
 
         Button mEmailSignInButton = findViewById(R.id.login_button);
         mEmailSignInButton.setOnClickListener(view -> {
             Intent i = new Intent(Intent.ACTION_VIEW)
-                    .setData(Uri.parse(API_URL + "/login?app=" + CLIENT_ID + "&tokenType=token"));
+                    .setData(Uri.parse(API_URL + "/internal/login?service=jipos://login.pos.ji.ch/login"));
             startActivity(i);
         });
 
@@ -63,8 +61,6 @@ public class LoginActivity extends AppCompatActivity {
                 String accessToken = data.getQueryParameter("accessToken");
 
                 this.attemptLogin(accessToken);
-            } else {
-                Toast.makeText(this, "Invalid callback, please try again.", Toast.LENGTH_SHORT).show();
             }
         }
     }
