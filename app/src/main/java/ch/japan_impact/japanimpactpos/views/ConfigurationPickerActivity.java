@@ -2,6 +2,7 @@ package ch.japan_impact.japanimpactpos.views;
 
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -77,9 +78,18 @@ public class ConfigurationPickerActivity extends AppCompatActivity {
         this.mSumUpSetup = findViewById(R.id.sumup_setup);
         this.mSumUpSetup.setOnClickListener(v -> SumUpAPI.openPaymentSettingsActivity(this, 1));
         this.mJiLogout = findViewById(R.id.ji_logout);
+
+
+        String CLIENT_ID = getResources().getString(R.string.auth_client_id);
+        String API_URL = getResources().getString(R.string.auth_api_url);
+
+
         this.mJiLogout.setOnClickListener(v -> {
             backend.getStorage().logout();
-            startActivity(new Intent(this, LoginActivity.class));
+
+            Intent i = new Intent(Intent.ACTION_VIEW)
+                    .setData(Uri.parse(API_URL + "/logout?app=" + CLIENT_ID + "&tokenType=token"));
+            startActivity(i);
         });
         this.mRefreshLayout = findViewById(R.id.refresh_layout);
 
