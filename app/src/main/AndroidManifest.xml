@@ -32,7 +32,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <!-- Accepts URIs that begin with "http://www.example.com/gizmos” -->
                 <data android:scheme="jipos"
-                      android:host="login.pos.ji.ch" />
+                      android:host="shop.japan-impact.ch" />
             </intent-filter>
         </activity>
         <activity android:name=".views.ConfigurationPickerActivity">

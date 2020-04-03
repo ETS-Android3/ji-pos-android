@@ -44,7 +44,7 @@ public class LoginActivity extends AppCompatActivity {
         Button mEmailSignInButton = findViewById(R.id.login_button);
         mEmailSignInButton.setOnClickListener(view -> {
             Intent i = new Intent(Intent.ACTION_VIEW)
-                    .setData(Uri.parse(API_URL + "/internal/login?service=jipos://login.pos.ji.ch/login"));
+                    .setData(Uri.parse(API_URL + "/cas/login?service=jipos://shop.japan-impact.ch/login"));
             startActivity(i);
         });
 
@@ -58,9 +58,9 @@ public class LoginActivity extends AppCompatActivity {
             Uri data = intent.getData();
 
             if (data != null && data.getPath() != null && data.getPath().equals("/login")) {
-                String accessToken = data.getQueryParameter("accessToken");
+                String ticket = data.getQueryParameter("ticket");
 
-                this.attemptLogin(accessToken);
+                this.attemptLogin(ticket);
             }
         }
     }

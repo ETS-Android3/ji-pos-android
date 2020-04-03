@@ -87,7 +87,7 @@ public class ConfigurationPickerActivity extends AppCompatActivity {
             backend.getStorage().logout();
 
             Intent i = new Intent(Intent.ACTION_VIEW)
-                    .setData(Uri.parse(API_URL + "/logout?redirect=jipos://login.pos.ji.ch/"));
+                    .setData(Uri.parse(API_URL + "/logout?redirect=jipos://shop.japan-impact.ch/"));
             startActivity(i);
         });
         this.mRefreshLayout = findViewById(R.id.refresh_layout);
