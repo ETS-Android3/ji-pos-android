@@ -14,8 +14,7 @@ import java.util.Date;
  */
 public class TokenStorage {
     private final SharedPreferences preferences;
-    private String refreshToken;
-    private String idToken;
+    private String accessToken;
 
     TokenStorage(SharedPreferences preferences) {
         this.preferences = preferences;
@@ -25,14 +24,12 @@ public class TokenStorage {
 
     protected void readTokenFromPreferences() {
         // Retrieve token if it exists
-        this.refreshToken = preferences.getString("refreshToken", null);
-        this.idToken = preferences.getString("idToken", null);
+        this.accessToken = preferences.getString("accessToken", null);
     }
 
     protected void writeTokenToPreferences() {
         preferences.edit()
-                .putString("idToken", idToken)
-                .putString("refreshToken", refreshToken)
+                .putString("accessToken", accessToken)
                 .apply();
     }
 
@@ -41,12 +38,12 @@ public class TokenStorage {
      * @return true if this storage holds a valid JWT token or a non-JWT token
      */
     public boolean isLoggedIn() {
-        if (refreshToken == null) {
+        if (accessToken == null) {
             return false; // No token == not logged in
         }
 
         try {
-            JWT jwt = new JWT(refreshToken);
+            JWT jwt = new JWT(accessToken);
             Date exp = jwt.getExpiresAt();
 
             Log.i("TicketingService", "Logged in with token expiring at " + exp + " / " + jwt.toString());
@@ -60,26 +57,20 @@ public class TokenStorage {
     }
 
     public void logout() {
-        this.refreshToken = null;
-        this.idToken = null;
+        this.accessToken = null;
 
         writeTokenToPreferences();
     }
 
-    void setTokens(String refresh, String id) {
-        this.refreshToken = refresh;
-        this.idToken = id;
+    void setToken(String accessToken) {
+        this.accessToken = accessToken;
 
-        Log.i("TokenStorage", "Storing tokens " +refresh + " / " + id);
+        Log.i("TokenStorage", "Storing token " + accessToken);
 
         writeTokenToPreferences();
     }
 
-    public String getRefreshToken() {
-        return refreshToken;
-    }
-
-    public String getIdToken() {
-        return idToken;
+    public String getAccessToken() {
+        return accessToken;
     }
 }

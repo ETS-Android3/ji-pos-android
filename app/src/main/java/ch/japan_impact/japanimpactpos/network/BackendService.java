@@ -14,10 +14,7 @@ import ch.japan_impact.japanimpactpos.data.scan.ScanConfigurationList;
 import ch.japan_impact.japanimpactpos.data.scan.ScanResult;
 import ch.japan_impact.japanimpactpos.network.exceptions.*;
 import com.android.volley.*;
-import com.android.volley.toolbox.HttpHeaderParser;
-import com.android.volley.toolbox.JsonObjectRequest;
-import com.android.volley.toolbox.JsonRequest;
-import com.android.volley.toolbox.Volley;
+import com.android.volley.toolbox.*;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import org.json.JSONException;
@@ -27,6 +24,8 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Type;
+import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.util.*;
 import java.util.function.Consumer;
 
@@ -57,20 +56,13 @@ public class BackendService {
 
     public void login(String accessToken, Consumer<Optional<String>> callback) throws JSONException {
 
-        JsonRequest<JSONObject> request = new JsonRequest<JSONObject>(
+        StringRequest request = new StringRequest(
                 Request.Method.POST,
                 API_URL + "/users/login",
-                accessToken,
-                response -> {
-                    if (response.has("idToken") && response.has("refreshToken")) {
-                        try {
-                            storage.setTokens(response.getString("refreshToken"), response.getString("idToken"));
+                (String response) -> {
+                    storage.setToken(response);
+
                             callback.accept(Optional.empty());
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                            callback.accept(Optional.of(ErrorCodes.UNKNOWN_ERROR.message));
-                        }
-                    } else callback.accept(Optional.of(ErrorCodes.UNKNOWN_ERROR.message));
                 },
                 error -> {
                     if (error instanceof NetworkError) {
@@ -89,17 +81,14 @@ public class BackendService {
                         callback.accept(Optional.of(ErrorCodes.UNKNOWN_ERROR.message));
                     }
                 }) {
+
             @Override
-            protected Response<JSONObject> parseNetworkResponse(NetworkResponse response) {
+            public byte[] getBody() {
                 try {
-                    String jsonString =
-                            new String(
-                                    response.data,
-                                    HttpHeaderParser.parseCharset(response.headers, PROTOCOL_CHARSET));
-                    return Response.success(
-                            new JSONObject(jsonString), HttpHeaderParser.parseCacheHeaders(response));
-                } catch (UnsupportedEncodingException | JSONException e) {
-                    return Response.error(new ParseError(e));
+                    return URLEncoder.encode(accessToken, "UTF-8").getBytes();
+                } catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
+                    return null;
                 }
             }
 
@@ -108,38 +97,8 @@ public class BackendService {
                 return "text/plain";
             }
         };
-        Log.i(TAG, "Sending " + new String(request.getBody()));
+        Log.i(TAG, "Sending " + accessToken);
         queue.add(request);
-    }
-
-    private void refreshIdToken(ApiCallback<Void> callback) {
-        JsonObjectRequest req = new JsonObjectRequest(
-                Request.Method.GET,
-                API_URL + "/users/refresh",
-                null,
-                response -> {
-                    if (response.has("idToken") && response.has("refreshToken")) {
-                        try {
-                            storage.setTokens(response.getString("refreshToken"), response.getString("idToken"));
-                            callback.onSuccess(null);
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                            callback.failure(e.getMessage());
-                        }
-                    } else callback.failure("Missing data");
-                }, callback::failure) {
-            @Override
-            public Map<String, String> getHeaders() throws AuthFailureError {
-                Map<String, String> headers = new HashMap<>(super.getHeaders());
-                if (!storage.isLoggedIn()) {
-                    throw new AuthFailureError("Vous devez être connecté pour faire cela.");
-                }
-                headers.put("authorization", "Refresh " + storage.getRefreshToken());
-                return headers;
-            }
-        };
-
-        queue.add(req);
     }
 
     public void getPosConfigs(ApiCallback<List<PosConfigurationList>> callback) {
@@ -208,28 +167,8 @@ public class BackendService {
             return;
         }
 
-        JavaObjectRequest<T> request = new JavaObjectRequest<>(method, url, body, listener::onSuccess, error -> {
-            if (error instanceof AuthFailureError && retry) {
-                Log.i(TAG, "Trying to refresh token...");
-                this.refreshIdToken(new ApiCallback<Void>() {
-                    @Override
-                    public void onSuccess(Void data) {
-                        sendAuthenticatedRequest(clazz, method, url, body, listener, false);
-                    }
-
-                    @Override
-                    public void onFailure(NetworkException ignored) {
-                        ignored.printStackTrace();
-                        storage.logout();
-                        listener.onFailure(new LoginRequiredException());
-                    }
-                });
-            } else {
-                listener.failure(error); // Pass the initial error
-            }
-        }, clazz);
-
-        request.setAuthToken(storage.getIdToken());
+        JavaObjectRequest<T> request = new JavaObjectRequest<>(method, url, body, listener::onSuccess, listener::failure, clazz);
+        request.setAuthToken(storage.getAccessToken());
         queue.add(request);
     }
 
