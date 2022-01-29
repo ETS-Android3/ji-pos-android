@@ -31,9 +31,9 @@ import ch.japan_impact.japanimpactpos.network.exceptions.LoginRequiredException;
 import ch.japan_impact.japanimpactpos.network.exceptions.NetworkException;
 import ch.japan_impact.japanimpactpos.views.ConfigurationPickerActivity;
 import ch.japan_impact.japanimpactpos.views.LoginActivity;
-import com.sumup.merchant.api.SumUpAPI;
-import com.sumup.merchant.api.SumUpLogin;
-import com.sumup.merchant.api.SumUpPayment;
+import com.sumup.merchant.reader.api.SumUpAPI;
+import com.sumup.merchant.reader.api.SumUpLogin;
+import com.sumup.merchant.reader.api.SumUpPayment;
 import dagger.android.AndroidInjection;
 
 import javax.inject.Inject;

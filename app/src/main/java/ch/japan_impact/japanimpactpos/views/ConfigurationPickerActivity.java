@@ -30,8 +30,8 @@ import ch.japan_impact.japanimpactpos.network.exceptions.NetworkException;
 import ch.japan_impact.japanimpactpos.views.pos.POSActivity;
 import ch.japan_impact.japanimpactpos.views.scan.ScanActivity;
 import com.google.android.material.tabs.TabLayout;
-import com.sumup.merchant.api.SumUpAPI;
-import com.sumup.merchant.api.SumUpLogin;
+import com.sumup.merchant.reader.api.SumUpAPI;
+import com.sumup.merchant.reader.api.SumUpLogin;
 import dagger.android.AndroidInjection;
 
 import javax.inject.Inject;
